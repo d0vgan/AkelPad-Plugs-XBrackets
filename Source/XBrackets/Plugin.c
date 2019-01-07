@@ -206,7 +206,7 @@ static LANGID getAkelPadLang(PLUGINDATA* pd)
         if ( pd->szLangModule && pd->szLangModule[0] )
         {
             char szModule[5];
-            
+
             lstrcpynA( szModule, pd->szLangModule, 4 );
             CharUpperA( szModule );
             if ( lstrcmpA(szModule, "ENG") == 0 )
@@ -360,7 +360,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   BOOL     prevBracketsSkipComment1;
   BOOL     bUpdateBracketsHighlight;
   INT_PTR  nRet;
-    
+
   pd->dwSupport |= PDS_NOAUTOLOAD;
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
@@ -398,7 +398,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       if ( !strPluginFuncMainW[0] )
       {
         int i;
-          
+
         lstrcpyW( strPluginFuncMainW, (LPCWSTR) pd->pFunction );
         for (i = 0; strPluginFuncMainW[i] != 0; i++)
         {
@@ -516,7 +516,7 @@ static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
     {
       BOOL    prevBracketsHighlightVisibleArea;
       MSGINFO msgi;
-        
+
       // saving previous value
       prevBracketsHighlightVisibleArea = bBracketsHighlightVisibleArea;
       bBracketsHighlightVisibleArea = FALSE;
@@ -531,7 +531,7 @@ static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
       // restoring previous value
       bBracketsHighlightVisibleArea = prevBracketsHighlightVisibleArea;
     }
-      
+
     if (CurrentBracketsIndexes[0] >= 0)
     {
       CHARRANGE_X cr = { -1, -1 };
@@ -679,7 +679,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   MSGINFO msgi;
   BOOL    bTextChangedLocal = FALSE;
-  
+
   static BOOL bHLSetTheme = FALSE;
 
   if ((uMsg == AEM_ADDCLONE) || 
@@ -687,7 +687,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       (uMsg == AEM_HLSETTHEME))
   {
     LRESULT  lResult = 0;
-      
+
     if (pEditProcData && pEditProcData->NextProc)
       lResult = pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
@@ -720,12 +720,12 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
     return lResult;
   }
-  
+
   if (uMsg == WM_SETFOCUS)
   {
     EDITINFO ei;
     LRESULT  lResult = 0;
-      
+
     if (pEditProcData && pEditProcData->NextProc)
       lResult = pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
@@ -736,14 +736,14 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       // Sometimes there is no other way to clear this flag
       bOpeningNewDocument = FALSE;
-        
+
       if (IsBracketsHighlight(uBracketsHighlight) || bGoToMatchingBracketTriggered)
       {
         // RemoveAllHighlightInfo with bRepaint=FALSE fixes strange bug 
         // under MustDie 9x when several MDI windows are repainted
-        RemoveAllHighlightInfo(FALSE); 
+        RemoveAllHighlightInfo(FALSE);
         bGoToMatchingBracketTriggered = FALSE;
-        
+
         if (IsBracketsHighlight(uBracketsHighlight))
         {
           if (ei.hWndEdit == hWnd)
@@ -792,7 +792,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
     }
   }
-  
+
   if (bBracketsAutoComplete)
   {
     if (uMsg == WM_CHAR)
@@ -835,7 +835,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         return lResult;
       }
     }
-      
+
     if ((uMsg == WM_PAINT) /* || (uMsg == WM_DISPLAYCHANGE) */ )
     {
       LRESULT lResult = 0;
@@ -1031,7 +1031,7 @@ LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
       return lResult;
     }
     */
-  
+
     EditParentMessages(hWnd, uMsg, wParam, lParam);
   }
 
@@ -1437,7 +1437,7 @@ void ReadOptions()
 
       readOptionBinaryA(hOptions, cszOptNamesA[OPT_CUSTOMRGB], 
         g_CustomColoursHighlight, MAX_CUSTOM_COLOURS*sizeof(COLORREF));
-      
+
       readOptionStrA(hOptions, cszOptNamesA[OPT_HTMLFILEEXTS], 
         strHtmlFileExtsA, STR_FILEEXTS_SIZE - 1);
       CharLowerA(strHtmlFileExtsA);
@@ -1461,7 +1461,7 @@ void ReadOptions()
 
       readOptionStrA(hOptions, cszOptNamesA[OPT_AUTOBRACKETS_PREV_CHAR_OK],
         (char *) opt_szPrevCharOkW_0, MAX_PREV_NEXT_CHAR_OK_SIZE - 1);
-      
+
       for (i = 0; i < OPT_DWORD_COUNT; i++)
       {
         g_dwOptions[i] = OPT_UNDEFINED_DWORD;
@@ -1615,7 +1615,7 @@ void ReadOptions()
     }
   }
   setPrevCharOkW(opt_szPrevCharOkW);
-  
+
   if (opt_szUserBracketsW_0[0] != 0)
   {
     if (g_bOldWindows)
@@ -1711,7 +1711,7 @@ void SaveOptions()
     dwNewOptionsFlags |= OPTF_DOTAGIF;
   if (bBracketsSkipEscaped)
     dwNewOptionsFlags |= OPTF_SKIPESCAPED;
-  if (bBracketsSkipComment1) 
+  if (bBracketsSkipComment1)
     dwNewOptionsFlags |= OPTF_SKIPCOMMENT1;
   if (bBracketsHighlightDoubleQuote)
     dwNewOptionsFlags |= OPTF_HLDOUBLEQUOTE;

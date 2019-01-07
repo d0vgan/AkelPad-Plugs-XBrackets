@@ -244,6 +244,7 @@ static const tCharacterHighlightData* CharacterInfo_GetHighlightDataConst(const 
 static WCHAR char2wchar(const char ch);
 static void  getEscapedPrefixPos(const INT_X nOffset, INT_X* pnPos, INT* pnLen);
 static BOOL  isEscapedPrefixW(const wchar_t* strW, int len);
+static BOOL  isEscapedCharacterW(const INT_X pos, const wchar_t* pcwszLine);
 static void  remove_duplicate_indexes_and_sort(INT_X* indexes, const INT size /* = HIGHLIGHT_INDEXES */);
 static BOOL  AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteMode);
 static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex, 
@@ -372,7 +373,7 @@ static int getRightBracketType(const wchar_t wch, const unsigned int uFlags)
       break;
     case L'>' :
       if (bBracketsDoTag || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
-        nRightBracketType = tbtTag; 
+        nRightBracketType = tbtTag;
       // no break here
     case L'/' :
       if (bBracketsDoTag2 || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
@@ -465,7 +466,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
       return;
     }
   }
-  
+
   // verifying if a typed character is a bracket
   if (g_bOldWindows)
   {
@@ -476,7 +477,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
   {
     wch = (WCHAR) pmsgi->wParam;
   }
-  
+
   if (pmsgi->hWnd != hActualEditWnd)
   {
     nAutoRightBracketPos = -1;
@@ -529,7 +530,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
 
         // one character has been typed, 
         // so the auto-closed right bracket position increased
-        ++nAutoRightBracketPos; 
+        ++nAutoRightBracketPos;
       }
       else
       {
@@ -576,7 +577,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
 
   if (bBracketsInternalRepaint || bAkelPadIsStarting)
     return;
-  
+
   if (!pmsgi->hWnd)
     return;
 
@@ -651,7 +652,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
         bHighlighted = TRUE;
     }
   }
-  
+
   if (bHighlighted)
   {
     for (i = 0; i < HIGHLIGHT_INDEXES; i++)
@@ -665,13 +666,13 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
       CharacterInfo_Copy(prevCharacterInfo, hgltCharacterInfo);
     }
   }
-  
+
   if (uFlags & XBR_GBF_HIGHLIGHTBR)
   {
     // highlight
     OnEditHighlightActiveBrackets();
   }
-  
+
 }
 
 void OnEditHighlightActiveBrackets(void)
@@ -782,7 +783,7 @@ void OnEditHighlightActiveBrackets(void)
         if (bBracketsDoTag2)
           nBracketType = tbtTag2;
       }
-        
+
       if (g_bOldWindows)
       {
         INT_X       nSelLen;
@@ -833,7 +834,7 @@ void OnEditHighlightActiveBrackets(void)
         const wchar_t* pBrPairW;
         wchar_t*       pTextW;
         int            nBrPairLen;
-          
+
         nSelLen = nEditEndPos - nEditPos;
         pBrPairW = getBracketsPairW(nBracketType);
         nBrPairLen = lstrlenW(pBrPairW);
@@ -991,7 +992,7 @@ void OnEditHighlightActiveBrackets(void)
     if (g_bOldWindows)
     {
       char szPrefixA[MAX_ESCAPED_PREFIX + 2];
-    
+
       len = (int) AnyRichEdit_GetTextAt(hActualEditWnd, pos, len, szPrefixA);
       MultiByteToWideChar(CP_ACP, 0, szPrefixA, -1, szPrefixW, MAX_ESCAPED_PREFIX + 1);
     }
@@ -1025,12 +1026,12 @@ void OnEditHighlightActiveBrackets(void)
       if (ci.lpLine)
       {
         INT_X nLineIndex;
-        
+
         if (g_bOldWindows)
           nLineIndex = AnyRichEdit_LineIndex(hActualEditWnd, ci.nLine);
         else
           nLineIndex = AnyRichEdit_LineIndexW(hActualEditWnd, ci.nLine);
-        
+
         nEditPos = nLineIndex + ci.nCharInLine;
       }
     }
@@ -1134,6 +1135,7 @@ static void updateCurrentBracketsIndexes(INT_X ind1, INT_X ind2)
 #define DP_FORWARD       0x01
 #define DP_BACKWARD      0x02
 #define DP_DETECT        0x10
+#define DP_MAYBEFORWARD  (DP_DETECT | DP_FORWARD)
 #define DP_MAYBEBACKWARD (DP_DETECT | DP_BACKWARD)
 
 static BOOL isSentenceEndChar(const wchar_t wch)
@@ -1174,23 +1176,37 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
     next_wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nCharacterPosition + 1);
   }
 
-  if (prev_wch == 0 || 
-      prev_wch == '\r' || 
-      prev_wch == '\n' || 
-      next_wch == curr_wch)
-    return DP_FORWARD; // previous char is EOL or pair found, search forward
+  if (prev_wch == 0)
+    return DP_FORWARD; // beginning of the file
 
-  if (next_wch == 0 || 
-      next_wch == '\r' || 
-      next_wch == '\n' || 
-      prev_wch == curr_wch)
-    return DP_BACKWARD; // next char is EOL or pair found, search backward
+  if (prev_wch == curr_wch)
+    return DP_BACKWARD; // pair found, search backward
+
+  if (next_wch == 0)
+    return DP_BACKWARD; // end of the file
+
+  if (next_wch == curr_wch)
+    return DP_FORWARD; // pair found, search forward
 
   if ( hLocalEditWnd != hActualEditWnd )
   {
     szLocalDelimitersW[0] = 0;
     SendMessage( hActualEditWnd, AEM_GETWORDDELIMITERS, 127, (LPARAM) szLocalDelimitersW );
     hLocalEditWnd = hActualEditWnd;
+  }
+
+  if (prev_wch == '\r' || 
+      prev_wch == '\n')
+  {
+    // previous char is EOL, search forward
+    return isSepOrOneOfW(next_wch, szLocalDelimitersW) ? DP_MAYBEFORWARD : DP_FORWARD;
+  }
+
+  if (next_wch == '\r' || 
+      next_wch == '\n')
+  {
+    // next char is EOL, search backward
+    return isSepOrOneOfW(prev_wch, szLocalDelimitersW) ? DP_MAYBEBACKWARD : DP_BACKWARD;
   }
 
   if (isSepOrOneOfW(prev_wch, szLocalDelimitersW))
@@ -1221,6 +1237,90 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
   return DP_DETECT;
 }
 
+static BOOL containsSymbolToTheLeft(const wchar_t wch, const WCHAR* pcwszLine, const INT_X pos)
+{
+  BOOL  containsSymbol = FALSE;
+  INT_X i = pos;
+  for ( ; (i >= 0) && !containsSymbol; i--)
+  {
+    if (pcwszLine[i] == wch)
+    {
+      if (!isEscapedCharacterW(i, pcwszLine))
+        containsSymbol = TRUE;
+    }
+  }
+  return containsSymbol;
+}
+
+static BOOL containsSymbolToTheRight(const wchar_t wch, const WCHAR* pcwszLine, const INT_X pos, const int len)
+{
+  BOOL  containsSymbol = FALSE;
+  INT_X i = pos;
+  for ( ; (i < len) && !containsSymbol; i++)
+  {
+    if (pcwszLine[i] == wch)
+    {
+      if (!isEscapedCharacterW(i, pcwszLine))
+        containsSymbol = TRUE;
+    }
+  }
+  return containsSymbol;
+}
+
+static BOOL isDirectionDetecting(const int direction)
+{
+  switch (direction)
+  {
+    case DP_DETECT:
+    case DP_MAYBEBACKWARD:
+    case DP_MAYBEFORWARD:
+      return TRUE;
+  }
+  return FALSE;
+}
+
+static int getDirectionIndex(const int direction)
+{
+  int i = 0;
+  switch (direction)
+  {
+    case DP_BACKWARD:      i = 0; break;
+    case DP_MAYBEBACKWARD: i = 1; break;
+    case DP_DETECT:        i = 2; break;
+    case DP_MAYBEFORWARD:  i = 3; break;
+    case DP_FORWARD:       i = 4; break;
+  }
+  return i;
+}
+
+static int getDirectionRank(const int leftDirection, const int rightDirection)
+{
+  //  The *exact* numbers in the table below have no special meaning.
+  //  The only important thing is relative comparison of the numbers:
+  //  which of them are greater than others, and which of them are equal.
+  //
+  // --> leftDirection --> DP_BACKWARD  DP_MAYBEBACKWARD   DP_DETECT      DP_MAYBEFORWARD   DP_FORWARD
+  //    DP_FORWARD         <<( )>>  0   <?( )>>   1        ?(? )>>   2    (?> )>>   3       (>> )>>   4
+  //    DP_MAYBEFORWARD    <<( )?>  1   <?( )?>   5        ?(? )?>   9    (?> )?>  13       (>> )?>  17
+  //    DP_DETECT          <<( ?)?  2   <?( ?)?   9        ?(? ?)?  16    (?> ?)?  23       (>> ?)?  30
+  //    DP_MAYBEBACKWARD   <<( <?)  3   <?( <?)  13        ?(? <?)  23    (?> <?)  33       (>> <?)  43
+  //    DP_BACWARD         <<( <<)  4   <?( <<)  17        ?(? <<)  30    (?> <<)  43       (>> <<)  56
+  // ^ rightDirection ^
+  static const int Ranking[5][5] = {
+    { 4, 17, 30, 43, 56 }, // DP_BACKWARD
+    { 3, 13, 23, 33, 43 }, // DP_MAYBEBACKWARD
+    { 2,  9, 16, 23, 30 }, // DP_DETECT
+    { 1,  5,  9, 13, 17 }, // DP_MAYBEFORWARD
+    { 0,  1,  2,  3,  4 }  // DP_FORWARD
+  };
+
+  int leftIndex, rightIndex;
+
+  leftIndex = getDirectionIndex(leftDirection);
+  rightIndex = getDirectionIndex(rightDirection);
+  return Ranking[rightIndex][leftIndex];
+}
+
 typedef struct sGetHighlightIndexesCookie {
     INT_X pos1;
     INT_X pos2;
@@ -1239,7 +1339,7 @@ enum eGetHighLightResult {
 static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANGE *crAkelRange, CHARRANGE64 *crRichRange, AEHLPAINT *hlp)
 {
   tGetHighlightIndexesCookie* cookie;
-  
+
   cookie = (tGetHighlightIndexesCookie *) dwCookie;
   cookie->nResult = ghlrNone;
 
@@ -1358,7 +1458,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
 static void GetHighlightDataFromAkelEdit(const INT_X nCharacterPosition, tGetHighlightIndexesCookie* pCookieHL)
 {
   AEGETHIGHLIGHT aehl;
-    
+
   pCookieHL->pos1 = -1;
   pCookieHL->pos2 = -1;
   pCookieHL->nResult = ghlrNone;
@@ -1393,7 +1493,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   tGetHighlightIndexesCookie cookieHL;
   AEFINDFOLD ff;
   BOOL bTag2;
-    
+
   bTag2 = FALSE;
   cookie.pos1 = -1;
   cookie.pos2 = -1;
@@ -1561,7 +1661,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
               }
             }
             else
-            {  
+            {
               cookie.pos2 = -1;
               cookie.nResult = ghlrSingleChar;
             }
@@ -1689,7 +1789,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           }
           CharacterInfo_Add(hgltCharacterInfo, cookie.pos2 - 1, &cookieHL.chd);
         }
-        
+
         if ((cookie.chd.dwState & XBR_STATEFLAG_DONOTHL) ||
             ((cookie.chd.dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(cookie.pos2, pSelection)))
         {
@@ -1759,6 +1859,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 {
   int   nBracketType;
   int   nDuplicatedPairDirection; // left bracket is the same as right
+  int   nDuplicatedPairDirectionPotential;
   int   nGetHighlightResult;
   BOOL  bRightBracket;
   WCHAR wch;
@@ -1771,7 +1872,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   if ( nCurrentFileType == tftNone )
     return FALSE;
   */
-  
+
   if ( (prevIndexesToHighlight[0] >= 0) || (prevIndexesToHighlight[3] >= 0) )
   {
     int i;
@@ -1859,12 +1960,12 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
             }
           }
         }
-        
+
         return TRUE;
       }
     }
-  }    
-  
+  }
+
   if (g_bOldWindows)
   {
     char ch = AnyRichEdit_GetCharAt(hActualEditWnd, nCharacterPosition);
@@ -1876,6 +1977,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   }
 
   nDuplicatedPairDirection = DP_NONE;
+  nDuplicatedPairDirectionPotential = DP_NONE;
   nGetHighlightResult = ghlrNone;
   bRightBracket = FALSE;
   nBracketType = getLeftBracketType(wch, BTF_HIGHLIGHT);
@@ -1925,6 +2027,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         case DP_BACKWARD:
         case DP_DETECT:
         case DP_MAYBEBACKWARD:
+        case DP_MAYBEFORWARD:
           bRightBracket = TRUE; // search from right to left (backward)
           break;
         /*default:
@@ -1934,7 +2037,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
       if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] == 0)
       {
-        if (nDuplicatedPairDirection == DP_DETECT)
+        if (isDirectionDetecting(nDuplicatedPairDirection))
           return FALSE;
       }
     }
@@ -1959,7 +2062,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     if (g_bOldWindows)
     {
       char szPrefixA[MAX_ESCAPED_PREFIX + 2];
-      
+
       len = (int) AnyRichEdit_GetTextAt(hActualEditWnd, pos, len, szPrefixA);
       MultiByteToWideChar(CP_ACP, 0, szPrefixA, -1, szPrefixW, MAX_ESCAPED_PREFIX + 1);
     }
@@ -1979,16 +2082,21 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     static WCHAR wszLine[0x10000];
 
     INT_X i;
+    INT_X i_saved;
     INT   iStep, nLen;
-    INT   nLine, nMinLine, nMaxLine, nLineStep, nStartLine;
+    INT   nLine, nLineStep, nStartLine, nSearchDirection;
+    INT   nLine_saved;
+    INT   rank_saved;
+    INT   nFailReferences;
+    INT   nMinLine[2];
+    INT   nMaxLine[2];
     BOOL  bFound;
     BOOL  bComment;
     WCHAR wchOK, wchFail;
-    INT   nFailReferences;
-    
+
     const WCHAR* pcwszLine;
     AECHARINDEX ci;
-        
+
     if (g_bAkelEdit)
       ci.lpLine = NULL;
     else
@@ -2005,52 +2113,69 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     if (g_bOldWindows)
     {
       nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, nCharacterPosition);
-      nMaxLine = (bBracketsHighlightVisibleArea ?
+      nMaxLine[0] = (bBracketsHighlightVisibleArea ?
         AnyRichEdit_LastVisibleLine(hActualEditWnd) : (AnyRichEdit_GetLineCount(hActualEditWnd) - 1));
-      nMinLine = (bBracketsHighlightVisibleArea ?
+      nMinLine[0] = (bBracketsHighlightVisibleArea ?
         AnyRichEdit_FirstVisibleLine(hActualEditWnd) : 0);
     }
     else
     {
       nLine = AnyRichEdit_ExLineFromCharW(hActualEditWnd, nCharacterPosition);
-      nMaxLine = (bBracketsHighlightVisibleArea ?
+      nMaxLine[0] = (bBracketsHighlightVisibleArea ?
         AnyRichEdit_LastVisibleLineW(hActualEditWnd) : (AnyRichEdit_GetLineCountW(hActualEditWnd) - 1));
-      nMinLine = (bBracketsHighlightVisibleArea ?
+      nMinLine[0] = (bBracketsHighlightVisibleArea ?
         AnyRichEdit_FirstVisibleLineW(hActualEditWnd) : 0);
     }
 
     if (nDuplicatedPairDirection != DP_NONE)
     {
-      const int maxLines = (nDuplicatedPairDirection == DP_DETECT) ? 
+      int maxLines = isDirectionDetecting(nDuplicatedPairDirection) ? 
         g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] : 
           g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES];
 
-      if (nMaxLine > nLine + maxLines - 1)
-        nMaxLine = nLine + maxLines - 1;
+      if (nMaxLine[0] > nLine + maxLines - 1)
+        nMaxLine[0] = nLine + maxLines - 1;
 
-      if (nMinLine < nLine - maxLines + 1)
-        nMinLine = nLine - maxLines + 1;
+      if (nMinLine[0] < nLine - maxLines + 1)
+        nMinLine[0] = nLine - maxLines + 1;
+
+      if (bRightBracket)
+      {
+        maxLines = g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES];
+
+        nMaxLine[1] = nMaxLine[0];
+        if (nMaxLine[1] > nLine + maxLines - 1)
+          nMaxLine[1] = nLine + maxLines - 1;
+
+        nMinLine[1] = nMinLine[0];
+        if (nMinLine[1] < nLine - maxLines + 1)
+          nMinLine[1] = nLine - maxLines + 1;
+      }
     }
     else
     {
       const int maxBrLines = g_dwOptions[OPT_DWORD_HIGHLIGHT_BR_MAX_LINES];
       if (maxBrLines > 0)
       {
-        if (nMaxLine > nLine + maxBrLines - 1)
-          nMaxLine = nLine + maxBrLines - 1;
+        if (nMaxLine[0] > nLine + maxBrLines - 1)
+          nMaxLine[0] = nLine + maxBrLines - 1;
 
-        if (nMinLine < nLine - maxBrLines + 1)
-          nMinLine = nLine - maxBrLines + 1;
+        if (nMinLine[0] < nLine - maxBrLines + 1)
+          nMinLine[0] = nLine - maxBrLines + 1;
       }
     }
 
+    i_saved = -1;
+    nLine_saved = -1;
+    rank_saved = 0;
     nStartLine = nLine;
+    nSearchDirection = 0;
     bFound = FALSE;
     bComment = FALSE;
     nLineStep = bRightBracket ? (-1) : 1; // forward or backward
     iStep = bRightBracket ? (-1) : 1;     // forward or backward
 
-    while ( bRightBracket ? (nLine >= nMinLine) : (nLine <= nMaxLine) )
+    while ( bRightBracket ? (nLine >= nMinLine[nSearchDirection]) : (nLine <= nMaxLine[nSearchDirection]) )
     {
       if (g_bAkelEdit)
       {
@@ -2151,6 +2276,19 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         }
 
         i = bRightBracket ? (nLinePosition - 1) : (nLinePosition + 1);
+
+        if (nDuplicatedPairDirection != DP_NONE)
+        {
+          nDuplicatedPairDirectionPotential = DP_NONE;
+          if (!containsSymbolToTheRight(wchOK, pcwszLine, nLinePosition + 1, nLen))
+            nDuplicatedPairDirectionPotential = DP_BACKWARD;
+
+          if ((nDuplicatedPairDirectionPotential == DP_NONE) || !bRightBracket)
+          {
+            if (!containsSymbolToTheLeft(wchOK, pcwszLine, nLinePosition - 1))
+              nDuplicatedPairDirectionPotential = DP_FORWARD;
+          }
+        }
       }
 
       for ( ; bRightBracket ? (i >= 0) : (i < nLen); i += iStep)
@@ -2158,18 +2296,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         wch = pcwszLine[i];
         if (wch == wchOK)
         {
-          if (bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && (i > 0))
-          {
-            INT_X pos;
-            INT   len;
-
-            getEscapedPrefixPos(i, &pos, &len);
-            if (!isEscapedPrefixW(pcwszLine + pos, len))
-              --nFailReferences;
-          }
-          else
+          if (!isEscapedCharacterW(i, pcwszLine))
             --nFailReferences;
-          
+
           if (nFailReferences < 0)
           {
             bFound = TRUE;
@@ -2178,16 +2307,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         }
         else if (wch == wchFail)
         {
-          if (bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && (i > 0))
-          {
-            INT_X pos;
-            INT   len;
-
-            getEscapedPrefixPos(i, &pos, &len);
-            if (!isEscapedPrefixW(pcwszLine + pos, len))
-              ++nFailReferences;
-          }
-          else
+          if (!isEscapedCharacterW(i, pcwszLine))
             ++nFailReferences;
         }
       }
@@ -2195,6 +2315,8 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
       if (bFound)
       {
         INT_X pos1;
+        int   nDirection2;
+        int   rank;
 
         if (nDuplicatedPairDirection == DP_NONE)
         {
@@ -2207,25 +2329,59 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         else
           pos1 = i + AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
 
+        // Here is how it works:
+        // 1. bFound=TRUE means:
+        //      the pair bracket or quote has been found.
+        // 2. invoking "break;" alone means:
+        //      everything is OK, so accept the search result, stop.
+        // 3. invoking "bFound = FALSE; break;" means:
+        //      reject the search results, stop.
+        // 4. when bRightBracket=TRUE, invoking "nSearchDirection = 1;" _without_ further "break;" means:
+        //      the searching backward is done, let's initiate searching forward.
         if (bRightBracket)
         {
-          const int nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
-          if (nDirection2 != DP_BACKWARD)
+          nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
+          rank = getDirectionRank(nDirection2, nDuplicatedPairDirection);
+
+          if (rank >= getDirectionRank(DP_MAYBEFORWARD, DP_BACKWARD))
+            break; // definitely found: (?-> <--) or (--> <-?) or (--> <--)
+
+          if (rank >= getDirectionRank(DP_DETECT, DP_BACKWARD))
           {
-            if (nDuplicatedPairDirection == DP_BACKWARD)
-            {
-              // when search direction is known, let's assume
-              // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
-              if (nStartLine - nLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
-                break;
-            }
+            // when search direction is known, let's assume
+            // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
+            if (nStartLine - nLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+              break;
+
+            i_saved = i;
+            nLine_saved = nLine;
+            rank_saved = rank;
+
+            // let's try searching forward...
+            nSearchDirection = 1;
           }
-          if (nDirection2 != DP_FORWARD)
+          else if (rank >= getDirectionRank(DP_BACKWARD, DP_BACKWARD))
           {
-            if (nDuplicatedPairDirection == DP_DETECT)
+            if (nStartLine - nLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
             {
-              // searching backward failed, let's try forward...
-              nLine = nMinLine;
+              if ((nDuplicatedPairDirectionPotential == DP_BACKWARD) || 
+                  (!containsSymbolToTheLeft(wchOK, pcwszLine, i - 1)))
+              {
+                i_saved = i;
+                nLine_saved = nLine;
+                rank_saved = rank;
+              }
+            }
+
+            // let's try searching forward...
+            nSearchDirection = 1;
+          }
+          else
+          {
+            if (isDirectionDetecting(nDuplicatedPairDirection))
+            {
+              // let's try searching forward...
+              nSearchDirection = 1;
             }
             else
             {
@@ -2234,58 +2390,104 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
               break;
             }
           }
-          else
-            break;
         }
         else
         {
-          const int nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
-          if (nDirection2 != DP_FORWARD)
+          nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
+          rank = getDirectionRank(nDuplicatedPairDirection, nDirection2);
+
+          if (rank >= getDirectionRank(DP_FORWARD, DP_MAYBEBACKWARD))
+            break; // definitely found: (--> <-?) or (?-> <--) or (--> <--)
+
+          if (rank >= getDirectionRank(DP_FORWARD, DP_DETECT))
           {
-            if (nDuplicatedPairDirection == DP_FORWARD)
+            // when search direction is known, let's assume
+            // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
+            if (nLine - nStartLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+              break;
+
+            if (i_saved != -1)
             {
-              // when search direction is known, let's assume
-              // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
-              if (nLine - nStartLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+              // conflict: the pair found in both directions
+              if (rank_saved > rank)
+              {
+                i = i_saved;
+                nLine = nLine_saved;
+              }
+              else if (rank_saved == rank)
+              {
+                i_saved = -1;
+                bFound = FALSE;
+              }
+              // else accept current pair
+            }
+            break;
+          }
+          else if (rank >= getDirectionRank(DP_FORWARD, DP_FORWARD))
+          {
+            if (nLine - nStartLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+            {
+              if ((nDuplicatedPairDirectionPotential == DP_FORWARD) ||
+                  (!containsSymbolToTheRight(wchOK, pcwszLine, i + 1, nLen)))
+              {
+                if (i_saved != -1)
+                {
+                  // conflict: the pair found in both directions
+                  if (rank_saved > rank)
+                  {
+                    i = i_saved;
+                    nLine = nLine_saved;
+                  }
+                  else if (rank_saved == rank)
+                  {
+                    i_saved = -1;
+                    bFound = FALSE;
+                  }
+                  // else accept current pair
+                }
                 break;
+              }
             }
           }
-          if (nDirection2 != DP_BACKWARD)
-          {
-            if ((nDirection2 != DP_MAYBEBACKWARD) || 
-                (nDuplicatedPairDirection == DP_DETECT))
-            {
-              // fail anyway
-              bFound = FALSE;
-            }
-          }
+
+          bFound = FALSE; // searching forward failed
           break;
         }
       }
 
-      if (nDuplicatedPairDirection == DP_DETECT)
+      if (bRightBracket)
       {
-        if (bRightBracket)
+        if ((nSearchDirection == 1) ||
+            (isDirectionDetecting(nDuplicatedPairDirection) && (nLine == nMinLine[0])))
         {
-          if (nLine == nMinLine)
-          {
-            bRightBracket = FALSE;
-            bFound = FALSE;
-            bComment = FALSE;
-            nLine = nStartLine - 1;
-            nLineStep = 1;
-            iStep = 1;
-            nFailReferences = 0;
-            
-            if (g_bAkelEdit)
-              ci.lpLine = NULL;
-            else
-              pcwszLine = wszLine;
-          }
+          nSearchDirection = 1;
+          bRightBracket = FALSE;
+          bFound = FALSE;
+          bComment = FALSE;
+          nLine = nStartLine - 1;
+          nLineStep = 1;
+          iStep = 1;
+          nFailReferences = 0;
+
+          if (g_bAkelEdit)
+            ci.lpLine = NULL;
+          else
+            pcwszLine = wszLine;
         }
       }
 
       nLine += nLineStep;
+    }
+
+    if (!bFound)
+    {
+      if ((nSearchDirection == 1) && (i_saved != -1))
+      {
+        i = i_saved;
+        nLine = nLine_saved;
+        wch = wchOK;
+        bFound = TRUE;
+      }
     }
 
     if (bFound && (wch == wchOK))
@@ -2361,7 +2563,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
       else
       {
         INT_X i1;
-        
+
         i1 = bRightBracket ? (nCharacterPosition - 1) : (i - 1);
 
         if (nGetHighlightResult == ghlrSingleChar)
@@ -2454,10 +2656,10 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 {
   unsigned char* pdst;
   const unsigned char* psrc;
-    
+
   pdst = (unsigned char *) dst;
   psrc = (const unsigned char *) src;
-    
+
   while ( size-- )
   {
     *(pdst++) = *(psrc++);
@@ -2711,7 +2913,7 @@ BOOL IsClearTypeEnabled()
 
       ptEnd.y *= 5; // multiply height by (5/4)
       ptEnd.y /= 4; // for "tall" characters
-      
+
       // ...finally we can select a region
       ptEnd.x += 3*(ptEnd.x - ptBegin.x); // for some cursive fonts
       if (ptEnd.x > EdRect.right)
@@ -2756,7 +2958,7 @@ BOOL IsClearTypeEnabled()
           if (uBracketsHighlight & BRHLF_BKGND)
           {
             BYTE r, g, b;
-            
+
             r = mix_color( GetRValue(bkColor), GetRValue(aecc.crBk) );
             g = mix_color( GetGValue(bkColor), GetGValue(aecc.crBk) );
             b = mix_color( GetBValue(bkColor), GetBValue(aecc.crBk) );
@@ -2835,7 +3037,7 @@ BOOL IsClearTypeEnabled()
           {
             SetTextColor(hDC, aecc.crText);
           }
-          
+
           DrawTextA(hDC, strA, 1, &rect, 0);
         }
         else
@@ -2907,7 +3109,7 @@ BOOL IsClearTypeEnabled()
           {
             SetTextColor(hDC, aecc.crText);
           }
-          
+
           DrawTextW(hDC, strW, 1, &rect, 0);
         }
         else
@@ -2936,7 +3138,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 
   if (bBracketsInternalRepaint || bAkelPadIsStarting)
     return;
-  
+
   for (i = 0; i < HIGHLIGHT_INDEXES; i++)
   {
     IndexesToHighlight[i] = -1; // set no items to highlight
@@ -3007,6 +3209,20 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
     ++k;
   }
   return (k % 2) ? TRUE : FALSE;
+}
+
+/*static*/ BOOL isEscapedCharacterW(const INT_X pos, const wchar_t* pcwszLine)
+{
+  if (bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && (pos > 0))
+  {
+    INT_X prefixPos;
+    INT   prefixLen;
+
+    getEscapedPrefixPos(pos, &prefixPos, &prefixLen);
+    if (isEscapedPrefixW(pcwszLine + prefixPos, prefixLen))
+      return TRUE;
+  }
+  return FALSE;
 }
 
 /*static*/ void remove_duplicate_indexes_and_sort(INT_X* indexes, const INT size)
@@ -3323,7 +3539,7 @@ int getFileType(int* pnCurrentFileType2)
 void AutoBrackets_Uninitialize(void)
 {
   int i;
-    
+
   nCurrentFileType = tftNone;
   nCurrentFileType2 = tfmNone;
   hCurrentEditWnd = NULL;
@@ -3332,7 +3548,7 @@ void AutoBrackets_Uninitialize(void)
   nAutoRightBracketType = tbtNone;
 
   RemoveAllHighlightInfo(TRUE);
-  
+
   for (i = 0; i < HIGHLIGHT_INDEXES; i++)
   {
     IndexesHighlighted[i] = -1;
@@ -3351,7 +3567,7 @@ static void copyUniqueCharsOkW(wchar_t* pDst, const wchar_t* pSrc)
   {
     int     i;
     wchar_t wch;
-      
+
     while ((wch = *pSrc) != 0)
     {
       if ((wch != L' ') && 

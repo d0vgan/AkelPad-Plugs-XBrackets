@@ -178,7 +178,7 @@ static const tDlgItemLngA* xbrGetDlgItemLngA(LANGID sysLangId)
 void xbrSetSettingsDlgLang(HWND hDlg, LANGID sysLangId)
 {
     sysLangId = PRIMARYLANGID(sysLangId);
-    
+
     if ( g_bOldWindows )
     {
         const tDlgItemLngA* pDIL = xbrGetDlgItemLngA(sysLangId);
@@ -400,7 +400,7 @@ const wchar_t* strW_ukr[XBR_STRCOUNT] =
 const char* xbrGetStrA(unsigned int strId, LANGID sysLangId)
 {
     sysLangId = PRIMARYLANGID(sysLangId);
-    
+
     if ( strId > 0 && strId <= XBR_STRCOUNT )
     {
         if ( sysLangId == LANG_RUSSIAN )
@@ -417,7 +417,7 @@ const char* xbrGetStrA(unsigned int strId, LANGID sysLangId)
 const wchar_t* xbrGetStrW(unsigned int strId, LANGID sysLangId)
 {
     sysLangId = PRIMARYLANGID(sysLangId);
-    
+
     if ( strId > 0 && strId <= XBR_STRCOUNT )
     {
         if ( sysLangId == LANG_RUSSIAN )

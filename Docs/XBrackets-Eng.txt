@@ -179,6 +179,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.6.3 (April 2015)
+ + improved algorithm of pair quotes detection
+
 v.6.2 (April 2015)
  - fixed: color theme change was not handled properly
  + several improvements/fixes

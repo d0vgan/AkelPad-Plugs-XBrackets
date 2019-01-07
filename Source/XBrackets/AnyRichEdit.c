@@ -204,7 +204,7 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
   void AnyRichEdit_ExLimitTextW(HWND hEd, INT_X nMaxLength)
   {
     SendMessageW(hEd, EM_EXLIMITTEXT, 0, (LPARAM) nMaxLength);
-  }  
+  }
 
   INT AnyRichEdit_ExLineFromCharW(HWND hEd, INT_X nCharacterIndex)
   {
@@ -242,7 +242,7 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
     }
     return (INT) i;
   }
-  
+
   WCHAR AnyRichEdit_GetCharAtW(HWND hEd, INT_X nPos)
   {
     WCHAR     wch = 0;
@@ -254,7 +254,7 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
     }
 
     return wch;
-  }  
+  }
 
   DWORD AnyRichEdit_GetEventMaskW(HWND hEd)
   {
@@ -277,7 +277,7 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
     lpTextBuf[nLen] = 0;
     return nLen;
   }
-  
+
   INT AnyRichEdit_GetLineCountW(HWND hEd)
   {
     return ((INT) SendMessageW(hEd, EM_GETLINECOUNT, 0, 0));
@@ -317,8 +317,8 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
       i = AnyRichEdit_ExLineFromCharW(hEd, i);
     }
     return (INT) i;
-  }  
-  
+  }
+
   INT_X AnyRichEdit_LineIndexW(HWND hEd, INT nLine)
   {
     return ((INT_X) SendMessageW(hEd, EM_LINEINDEX, (WPARAM) nLine, 0));
@@ -347,7 +347,7 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
     bRet = (BOOL) SendMessageW(hEd, EM_SETCHARFORMAT, (WPARAM) dwOptions, (LPARAM) &cf);
 
     return bRet;
-  }  
+  }
 
   DWORD AnyRichEdit_SetEventMaskW(HWND hEd, DWORD nEventMask)
   {

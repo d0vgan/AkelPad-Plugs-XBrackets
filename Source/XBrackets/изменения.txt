@@ -1,5 +1,14 @@
 ﻿Apr 2015
 --------
++ теперь алгоритм поиска парных кавычек основан на "оценочном"
+  сравнении. См. использование ф-ций getDirectionRank, а также
+  containsSymbolToTheLeft и containsSymbolToTheRight.
+  При неоднозначности обе найденные пары кавычек "взвешиваются"
+  для принятия решения о том, которую из них подсвечивать.
+
+
+Apr 2015
+--------
 + теперь OnEditGetActiveBrackets умеет XBR_GBF_UPDATEHLDATA
 + обрабатываем AEM_HLSETTHEME
 + теперь AEN_TEXTCHANGING и AEN_TEXTCHANGED обрабатываются только при
