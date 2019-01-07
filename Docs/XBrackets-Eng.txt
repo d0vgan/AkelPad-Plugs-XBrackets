@@ -179,6 +179,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.6.1 (March 2015)
+ + license info added (see below)
+
 v.6.0 (December 2014)
  * AkelPad 4.9.1+
 
@@ -383,5 +386,8 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Dec 2014, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Mar 2015, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
+
+This plugin is freeware (free for both personal and commercial usage);
+it is distributed under the same license as AkelPad.

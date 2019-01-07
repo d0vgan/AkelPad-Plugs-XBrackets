@@ -41,8 +41,8 @@ BEGIN
 END
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION 6, 0, 0, 0
-PRODUCTVERSION 6, 0, 0, 0
+FILEVERSION 6, 1, 0, 0
+PRODUCTVERSION 6, 1, 0, 0
 FILEOS 0x00000004
 FILETYPE 0x00000002
 BEGIN
@@ -53,12 +53,12 @@ BEGIN
       VALUE "Comments", "The wall is thin - and our foreheads are hard :-)\0"
       VALUE "CompanyName", "Full of Madness Co.\0"
       VALUE "FileDescription", "XBrackets plugin for AkelPad text editor\0"
-      VALUE "FileVersion", "6, 0, 0, 0\0"
+      VALUE "FileVersion", "6, 1, 0, 0\0"
       VALUE "InternalName", "XBrackets\0"
-      VALUE "LegalCopyright", "(C) Oct 2006 - Dec 2014, Vitaliy Dovgan aka DV\0"
+      VALUE "LegalCopyright", "(C) Oct 2006 - Mar 2015, Vitaliy Dovgan aka DV\0"
       VALUE "OriginalFilename", "XBrackets.dll\0"
       VALUE "ProductName", " XBrackets plugin for AkelPad text editor\0"
-      VALUE "ProductVersion", "6, 0, 0, 0\0"
+      VALUE "ProductVersion", "6, 1, 0, 0\0"
     END
   END
   BLOCK "VarFileInfo"
