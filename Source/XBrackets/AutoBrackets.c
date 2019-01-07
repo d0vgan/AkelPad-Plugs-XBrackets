@@ -1237,11 +1237,15 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
   return DP_DETECT;
 }
 
-static BOOL containsSymbolToTheLeft(const wchar_t wch, const WCHAR* pcwszLine, const INT_X pos)
+static BOOL containsSymbolToTheLeft(const AELINEDATA* lpLine, const wchar_t wch, const INT_X pos)
 {
-  BOOL  containsSymbol = FALSE;
-  INT_X i = pos;
-  for ( ; (i >= 0) && !containsSymbol; i--)
+  const WCHAR* pcwszLine;
+  INT_X i;
+  BOOL  containsSymbol;
+
+  pcwszLine = g_bAkelEdit ? lpLine->wpLine : (const WCHAR *)lpLine;
+  containsSymbol = FALSE;
+  for (i = pos; (i >= 0) && !containsSymbol; i--)
   {
     if (pcwszLine[i] == wch)
     {
@@ -1249,14 +1253,38 @@ static BOOL containsSymbolToTheLeft(const wchar_t wch, const WCHAR* pcwszLine, c
         containsSymbol = TRUE;
     }
   }
+
+  if (g_bAkelEdit && !containsSymbol)
+  {
+    // process wrapped line
+    lpLine = lpLine->prev;
+    while ((!containsSymbol) && (lpLine) && (lpLine->nLineBreak == AELB_WRAP))
+    {
+      pcwszLine = lpLine->wpLine;
+      for (i = lpLine->nLineLen - 1; (i >= 0) && !containsSymbol; i--)
+      {
+        if (pcwszLine[i] == wch)
+        {
+          if (!isEscapedCharacterW(i, pcwszLine))
+            containsSymbol = TRUE;
+        }
+      }
+      lpLine = lpLine->prev;
+    }
+  }
+
   return containsSymbol;
 }
 
-static BOOL containsSymbolToTheRight(const wchar_t wch, const WCHAR* pcwszLine, const INT_X pos, const int len)
+static BOOL containsSymbolToTheRight(const AELINEDATA* lpLine, const wchar_t wch, const INT_X pos, int len)
 {
-  BOOL  containsSymbol = FALSE;
-  INT_X i = pos;
-  for ( ; (i < len) && !containsSymbol; i++)
+  const WCHAR* pcwszLine;
+  INT_X i;
+  BOOL  containsSymbol;
+
+  pcwszLine = g_bAkelEdit ? lpLine->wpLine : (const WCHAR *)lpLine;
+  containsSymbol = FALSE;
+  for (i = pos; (i < len) && !containsSymbol; i++)
   {
     if (pcwszLine[i] == wch)
     {
@@ -1264,6 +1292,29 @@ static BOOL containsSymbolToTheRight(const wchar_t wch, const WCHAR* pcwszLine, 
         containsSymbol = TRUE;
     }
   }
+
+  if (g_bAkelEdit && !containsSymbol)
+  {
+    // process wrapped line
+    while ((!containsSymbol) && (lpLine->nLineBreak == AELB_WRAP))
+    {
+      lpLine = lpLine->next;
+      if (lpLine)
+      {
+        pcwszLine = lpLine->wpLine;
+        len = lpLine->nLineLen;
+        for (i = 0; (i < len) && !containsSymbol; i++)
+        {
+          if (pcwszLine[i] == wch)
+          {
+            if (!isEscapedCharacterW(i, pcwszLine))
+              containsSymbol = TRUE;
+          }
+        }
+      }
+    }
+  }
+
   return containsSymbol;
 }
 
@@ -2083,11 +2134,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
     INT_X i;
     INT_X i_saved;
-    INT   iStep, nLen;
-    INT   nLine, nLineStep, nStartLine, nSearchDirection;
-    INT   nLine_saved;
-    INT   rank_saved;
-    INT   nFailReferences;
+    INT   nLen, nLine, nStartLine, nWrappedLines;
+    INT   nLine_saved, rank_saved;
+    INT   nFailReferences, nSearchDirection;
     INT   nMinLine[2];
     INT   nMaxLine[2];
     BOOL  bFound;
@@ -2097,9 +2146,8 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     const WCHAR* pcwszLine;
     AECHARINDEX ci;
 
-    if (g_bAkelEdit)
-      ci.lpLine = NULL;
-    else
+    ci.lpLine = NULL;
+    if (!g_bAkelEdit)
       pcwszLine = wszLine;
 
     // the character to search for (another bracket)
@@ -2169,11 +2217,10 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     nLine_saved = -1;
     rank_saved = 0;
     nStartLine = nLine;
+    nWrappedLines = 0;
     nSearchDirection = 0;
     bFound = FALSE;
     bComment = FALSE;
-    nLineStep = bRightBracket ? (-1) : 1; // forward or backward
-    iStep = bRightBracket ? (-1) : 1;     // forward or backward
 
     while ( bRightBracket ? (nLine >= nMinLine[nSearchDirection]) : (nLine <= nMaxLine[nSearchDirection]) )
     {
@@ -2280,18 +2327,18 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         if (nDuplicatedPairDirection != DP_NONE)
         {
           nDuplicatedPairDirectionPotential = DP_NONE;
-          if (!containsSymbolToTheRight(wchOK, pcwszLine, nLinePosition + 1, nLen))
+          if (!containsSymbolToTheRight(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, nLinePosition + 1, nLen))
             nDuplicatedPairDirectionPotential = DP_BACKWARD;
 
           if ((nDuplicatedPairDirectionPotential == DP_NONE) || !bRightBracket)
           {
-            if (!containsSymbolToTheLeft(wchOK, pcwszLine, nLinePosition - 1))
+            if (!containsSymbolToTheLeft(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, nLinePosition - 1))
               nDuplicatedPairDirectionPotential = DP_FORWARD;
           }
         }
       }
 
-      for ( ; bRightBracket ? (i >= 0) : (i < nLen); i += iStep)
+      while ( bRightBracket ? (i >= 0) : (i < nLen) )
       {
         wch = pcwszLine[i];
         if (wch == wchOK)
@@ -2310,6 +2357,11 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           if (!isEscapedCharacterW(i, pcwszLine))
             ++nFailReferences;
         }
+
+        if (bRightBracket)
+          --i;
+        else
+          ++i;
       }
 
       if (bFound)
@@ -2350,7 +2402,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           {
             // when search direction is known, let's assume
             // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
-            if (nStartLine - nLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+            if (nStartLine - nLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
               break;
 
             i_saved = i;
@@ -2362,10 +2414,10 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           }
           else if (rank >= getDirectionRank(DP_BACKWARD, DP_BACKWARD))
           {
-            if (nStartLine - nLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+            if (nStartLine - nLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
             {
               if ((nDuplicatedPairDirectionPotential == DP_BACKWARD) || 
-                  (!containsSymbolToTheLeft(wchOK, pcwszLine, i - 1)))
+                  (!containsSymbolToTheLeft(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, i - 1)))
               {
                 i_saved = i;
                 nLine_saved = nLine;
@@ -2403,7 +2455,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           {
             // when search direction is known, let's assume
             // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
-            if (nLine - nStartLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+            if (nLine - nStartLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
               break;
 
             if (i_saved != -1)
@@ -2425,10 +2477,10 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           }
           else if (rank >= getDirectionRank(DP_FORWARD, DP_FORWARD))
           {
-            if (nLine - nStartLine < (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+            if (nLine - nStartLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
             {
               if ((nDuplicatedPairDirectionPotential == DP_FORWARD) ||
-                  (!containsSymbolToTheRight(wchOK, pcwszLine, i + 1, nLen)))
+                  (!containsSymbolToTheRight(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, i + 1, nLen)))
               {
                 if (i_saved != -1)
                 {
@@ -2464,19 +2516,40 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           bRightBracket = FALSE;
           bFound = FALSE;
           bComment = FALSE;
-          nLine = nStartLine - 1;
-          nLineStep = 1;
-          iStep = 1;
+          nLine = nStartLine;
+          nWrappedLines = 0;
           nFailReferences = 0;
 
-          if (g_bAkelEdit)
-            ci.lpLine = NULL;
-          else
+          ci.lpLine = NULL;
+          if (!g_bAkelEdit)
             pcwszLine = wszLine;
         }
+        else
+        {
+          --nLine; // go to previous line
+          if (g_bAkelEdit)
+          {
+            if (ci.lpLine->prev && (ci.lpLine->prev->nLineBreak == AELB_WRAP))
+            {
+              ++nWrappedLines;
+              if (nMinLine[nSearchDirection] != 0)
+                --nMinLine[nSearchDirection];
+            }
+          }
+        }
       }
-
-      nLine += nLineStep;
+      else
+      {
+        ++nLine; // go to next line
+        if (g_bAkelEdit)
+        {
+          if (ci.lpLine->nLineBreak == AELB_WRAP)
+          {
+            ++nWrappedLines;
+            ++nMaxLine[nSearchDirection];
+          }
+        }
+      }
     }
 
     if (!bFound)

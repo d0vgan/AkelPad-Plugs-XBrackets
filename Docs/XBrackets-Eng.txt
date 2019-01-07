@@ -179,6 +179,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.6.4 (April 2015)
+ + now XBrackets supports wrapped lines
+
 v.6.3 (April 2015)
  + improved algorithm of pair quotes detection
 

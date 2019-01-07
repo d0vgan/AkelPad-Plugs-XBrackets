@@ -1,5 +1,11 @@
 ﻿Apr 2015
 --------
++ теперь XBrackets учитывает AELB_WRAP, работая с перенесенными
+  (wrapped) строками как с одной строкой.
+
+
+Apr 2015
+--------
 + теперь алгоритм поиска парных кавычек основан на "оценочном"
   сравнении. См. использование ф-ций getDirectionRank, а также
   containsSymbolToTheLeft и containsSymbolToTheRight.
