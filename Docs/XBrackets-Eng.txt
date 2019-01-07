@@ -11,16 +11,19 @@ This plugin allows to:
    - next & previous characters are analysed for " quote.
 2) highlight active brackets i.e. it highlights a bracket
    under the cursor and its corresponding pair bracket.
-3) go to matching pair bracket - using GoToMatchingBracket.
+3) go to matching pair bracket - using GoToMatchingBracket
+   or GoToNearestBracket.
 4) select a text between matching pair brackets - using
-   SelToMatchingBracket.
+   SelToMatchingBracket or SelToNearestBrackets.
 
 Note:
 To prevent repainting of active brackets highlighted,
 XBrackets::Main must be loaded AFTER Coder::HighLight.
-Functions "GoToMatchingBracket" and "SelToMatchingBracket"
+Functions "GoToMatchingBracket" and "SelToMatchingBracket",
+as well as "GoToNearestBracket" and "SelToNearestBrackets",
 require the plugin to be active - i.e. its function "Main"
-must be active.
+must be active. If it is not active, these functions
+activate it automatically.
 
 External call example:
 
@@ -186,6 +189,31 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     a pair bracket.
     The value of 0 means "unrestricted" - i.e. to the end of file.
 
+  nearestbr.goto_flags = 0
+    This option controls the behavior of the GoToNearestBracket function.
+    The value of this option will be the sum of the following numbers:
+    0 - (default) the caret goes to the nearest bracket (either left or
+        right), staying inside the brackets (either after the left bracket
+        or before the right bracket);
+    1 - the caret goes to the bracket, staying outside of the brackets
+        (either before the left bracket or after the right bracket);
+    16 - the caret always goes to the left bracket;
+    32 - the caret always goes to the right bracket.
+    When the sum of (16 + 32) is used, it is treated as 16.
+
+  nearestbr.selto_flags = 0
+    This option controls the behavior of the SelToNearestBrackets function.
+    The value of this option will be the sum of the following numbers:
+    0 - (default) the surrounding brackets themselves are either included or
+        not included in the selection, depending on the position of the caret;
+    1 - the surrounding brackets are always included in the selection.
+
+  nearestbr.max_lines = 0
+    Number of text lines to be processed by XBrackets while searching for
+    the nearest pair of brackets.
+    The value of 1 means "within current line".
+    The value of 0 means "unrestricted" - i.e. to the end of file.
+
 The plugin allows you to change the additional options without closing AkelPad.
 In three steps, in this order:
   1a. Open the "Plugins" window (Settings-> Plugins...) and disable the
@@ -206,6 +234,13 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.7.4 (September 2018)
+ + new functions: GoToNearestBracket, SelToNearestBrackets
+ + new options: nearestbr.goto_flags, nearestbr.selto_flags
+ + now each next call of SelToMatchingBracket and SelToNearestBrackets
+   switches the caret position (from the end of the selection to the
+   beginning of the selection and vice versa)
+
 v.7.3 (June 2018)
  + new: autocomplete.sel_autobr=3 and 4
 
@@ -459,7 +494,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Jun 2018, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Sep 2018, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);

@@ -6,6 +6,7 @@
 #include "XBracketsLng.h"
 #include "XMemStrFunc.h"
 #include <commctrl.h>
+#include <commdlg.h>
 
 extern HWND        g_hMainWnd;
 extern HINSTANCE   g_hInstanceDLL;
@@ -406,6 +407,8 @@ void SettingsDlg_OnDrawItem(HWND hDlg, UINT uControlID, DRAWITEMSTRUCT* pDis)
 {
   HBRUSH   hBrush;
   COLORREF dwColor;
+
+  (hDlg); // unreferenced parameter
 
   switch (uControlID)
   {

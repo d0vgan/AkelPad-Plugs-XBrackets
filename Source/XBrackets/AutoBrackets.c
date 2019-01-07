@@ -29,6 +29,15 @@
 //#define _verify_hl_
 #undef _verify_hl_
 
+#ifdef _DEBUG
+  #define NEARBR_CHARINDEX_LOOP_VERIFY         1
+  #define NEARBR_CHARINDEX_LOOP_USE_DEBUGBREAK 1
+#else
+  // be sure to disable it in the Release mode
+  #define NEARBR_CHARINDEX_LOOP_VERIFY         0
+  #define NEARBR_CHARINDEX_LOOP_USE_DEBUGBREAK 0
+#endif
+
 enum TFileType {
   tftNone = 0,
   tftText,
@@ -46,13 +55,14 @@ enum TFileType2 {
 
 enum TBracketType {
   tbtNone = 0,
-  tbtBracket,  //  (
-  tbtSquare,   //  [
-  tbtBrace,    //  {
-  tbtDblQuote, //  "
-  tbtSglQuote, //  '
-  tbtTag,      //  <
-  tbtTag2,
+  tbtBracket,  //  ( )
+  tbtSquare,   //  [ ]
+  tbtBrace,    //  { }
+  tbtDblQuote, //  " "
+  tbtSglQuote, //  ' '
+  tbtTag,      //  < >
+  tbtTag2,     //  < />
+  tbtTagInv,   //  > <
 
   tbtCount,
 
@@ -66,7 +76,8 @@ static const char* strBracketsA[tbtCount - 1] = {
   "\"\"",
   "\'\'",
   "<>",
-  "</>"
+  "</>",
+  "><"
 };
 
 static const WCHAR* strBracketsW[tbtCount - 1] = {
@@ -76,7 +87,8 @@ static const WCHAR* strBracketsW[tbtCount - 1] = {
   L"\"\"",
   L"\'\'",
   L"<>",
-  L"</>"
+  L"</>",
+  L"><"
 };
 
 #define  MAX_EXT             16
@@ -87,6 +99,7 @@ INT_X IndexesHighlighted[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
 INT_X IndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
 INT_X prevIndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 }; // "cached" indexes
 INT_X CurrentBracketsIndexes[2] = { -1, -1 };
+INT_X NearestBracketsIndexes[4] = { -1, -1, tbtNone, 0 }; // "cached" indexes + nBrType
 
 #define XBR_FONTSTYLE_UNDEFINED 0xF0F0F0FF
 #define XBR_FONTCOLOR_UNDEFINED ((DWORD)(-1))
@@ -111,6 +124,24 @@ typedef struct sStringWrapperW {
     int nSize; // size of a string buffer pointed by pszStringW, in characters
     int nLen;  // current length of a string, in characters
 } tStringWrapperW;
+
+typedef struct sOccurrenceCookie {
+    INT_X nPos; // character position
+    int nDirection; // direction: DP_NONE and so on
+} tOccurrenceCookie;
+
+#define MAX_OCCURRENCE_DEPTH 8
+
+typedef struct sOccurrenceItem {
+    int nType; // occurrence type: e.g. tbtBracket
+    unsigned int nDepth; // current occurrence depth: nDepth=0 means "empty"
+    tOccurrenceCookie cookies[MAX_OCCURRENCE_DEPTH];
+} tOccurrenceItem;
+
+typedef struct sOccurrencesData {
+    tOccurrenceItem* pItems; // the array of tOccurrenceItem
+    int              nMaxItems; // size of the array
+} tOccurrencesData;
 
 tCharacterInfo  hgltCharacterInfo[HIGHLIGHT_INDEXES];
 tCharacterInfo  prevCharacterInfo[HIGHLIGHT_INDEXES]; // "cached" info
@@ -265,14 +296,171 @@ static const tCharacterHighlightData* CharacterInfo_GetHighlightDataConst(const 
   return (const tCharacterHighlightData *) 0;
 }
 
+// tOccurrenceCookie useful functions
+static void OccurrenceCookie_Clear(tOccurrenceCookie* cookie)
+{
+  cookie->nPos = -1;
+  cookie->nDirection = 0;
+}
+static void OccurrenceCookie_Copy(tOccurrenceCookie* to, const tOccurrenceCookie* from)
+{
+  if (from != NULL)
+  {
+    to->nPos = from->nPos;
+    to->nDirection = from->nDirection;
+  }
+  else
+  {
+    OccurrenceCookie_Clear(to);
+  }
+}
+
+// tOccurrenceItem useful functions
+static void OccurrenceItem_Clear(tOccurrenceItem* oci)
+{
+  int i;
+  oci->nType = -1;
+  oci->nDepth = 0;
+  for (i = 0; i < MAX_OCCURRENCE_DEPTH; i++)
+  {
+    OccurrenceCookie_Clear(&oci->cookies[i]);
+  }
+}
+static void OccurrenceItem_Copy(tOccurrenceItem* to, const tOccurrenceItem* from)
+{
+  if (from != NULL)
+  {
+    int i;
+    to->nType = from->nType;
+    to->nDepth = from->nDepth;
+    for (i = 0; i < MAX_OCCURRENCE_DEPTH; i++)
+    {
+      OccurrenceCookie_Copy(&to->cookies[i], &from->cookies[i]);
+    }
+  }
+  else
+  {
+    OccurrenceItem_Clear(to);
+  }
+}
+
+// tOccurrencesData useful functions
+static void OccurrencesData_Clear(tOccurrencesData* ocd)
+{
+  int i;
+  for (i = 0; i < ocd->nMaxItems; i++)
+  {
+    OccurrenceItem_Clear(&ocd->pItems[i]);
+  }
+}
+static void OccurrencesData_Init(tOccurrencesData* ocd, tOccurrenceItem* pItems, int nMaxItems)
+{
+  ocd->pItems = pItems;
+  ocd->nMaxItems = nMaxItems;
+  OccurrencesData_Clear(ocd);
+}
+static BOOL OccurrencesData_Contains(const tOccurrencesData* ocd, int nType, tOccurrenceCookie* cookie /* = NULL */)
+{
+  tOccurrenceItem* pItem;
+  int i;
+  BOOL bRet = FALSE;
+  for (i = 0; i < ocd->nMaxItems; i++)
+  {
+    pItem = &ocd->pItems[i];
+    if (pItem->nType == nType)
+    {
+      if (pItem->nDepth != 0)
+      {
+        if (cookie != NULL)
+        {
+          OccurrenceCookie_Copy(cookie, &pItem->cookies[pItem->nDepth - 1]);
+        }
+        bRet = TRUE;
+      }
+      return bRet;
+    }
+  }
+  return bRet;
+}
+static BOOL OccurrencesData_IsEmpty(const tOccurrencesData* ocd)
+{
+  int i;
+  for (i = 0; i < ocd->nMaxItems; i++)
+  {
+    if (ocd->pItems[i].nDepth != 0)
+      return FALSE;
+  }
+  return TRUE;
+}
+static BOOL OccurrencesData_Increment(tOccurrencesData* ocd, int nType, const tOccurrenceCookie* cookie /* = NULL */)
+{
+  tOccurrenceItem* pItem;
+  int i;
+  for (i = 0; i < ocd->nMaxItems; i++)
+  {
+    pItem = &ocd->pItems[i];
+    if (pItem->nType == nType)
+    {
+      if (pItem->nDepth == MAX_OCCURRENCE_DEPTH)
+        return FALSE; // no more room in the cookies array
+
+      OccurrenceCookie_Copy(&pItem->cookies[pItem->nDepth], cookie);
+      ++pItem->nDepth;
+      return TRUE; // OK
+    }
+  }
+  for (i = 0; i < ocd->nMaxItems; i++)
+  {
+    pItem = &ocd->pItems[i];
+    if (pItem->nDepth == 0) // "empty" occurrence
+    {
+      pItem->nType = nType;
+      pItem->nDepth = 1;
+      OccurrenceCookie_Copy(&pItem->cookies[0], cookie);
+      return TRUE; // OK
+    }
+  }
+  return FALSE; // no more room in the pItems array
+}
+static BOOL OccurrencesData_Decrement(tOccurrencesData* ocd, int nType)
+{
+  tOccurrenceItem* pItem;
+  int i;
+  for (i = 0; i < ocd->nMaxItems; i++)
+  {
+    pItem = &ocd->pItems[i];
+    if (pItem->nType == nType)
+    {
+      if (pItem->nDepth != 0)
+      {
+        if (--pItem->nDepth == 0)
+        {
+          pItem->nType = -1;
+        }
+        OccurrenceCookie_Clear(&pItem->cookies[pItem->nDepth]);
+      }
+      else
+      {
+        OccurrenceItem_Clear(pItem);
+      }
+      return TRUE; // OK
+    }
+  }
+  return FALSE; // occurrence of nType was not found
+}
+
 // functions prototypes
 static WCHAR char2wchar(const char ch);
 static void  getEscapedPrefixPos(const INT_X nOffset, INT_X* pnPos, INT* pnLen);
 static BOOL  isEscapedPrefixW(const wchar_t* strW, int len);
+static BOOL  isEscapedPrefixA(const char* strA, int len);
+static BOOL  isEscapedPosW(const INT_X nOffset);
+static BOOL  isEscapedPosA(const INT_X nOffset);
+static BOOL  isEscapedPosEx(const INT_X nOffset);
 static BOOL  isEscapedCharacterW(const INT_X pos, const wchar_t* pcwszLine);
 static void  remove_duplicate_indexes_and_sort(INT_X* indexes, const INT size /* = HIGHLIGHT_INDEXES */);
 static BOOL  AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteMode);
-static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex, 
+static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex,
                                  const INT_X nCharacterPosition, const CHARRANGE_X* pSelection);
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
 static BOOL  IsClearTypeEnabled(void);
@@ -322,9 +510,32 @@ static const char* getBracketsPairA(int nBracketType)
   return strUserBracketsA[nBracketType - tbtUser];
 }
 
+static BOOL isDuplicatedPair(int nBracketType)
+{
+  if (nBracketType == tbtDblQuote || nBracketType == tbtSglQuote)
+    return TRUE;
+
+  if (nBracketType >= tbtUser)
+  {
+    const wchar_t* pszBrPairW = getBracketsPairW(nBracketType);
+    if (pszBrPairW[0] == pszBrPairW[1])
+      return TRUE;
+  }
+
+  return FALSE;
+}
+
+static wchar_t getCharAt(HWND hEd, INT_X nPos)
+{
+  return (g_bOldWindows ?
+            char2wchar(AnyRichEdit_GetCharAt(hEd, nPos)) :
+              AnyRichEdit_GetCharAtW(hEd, nPos));
+}
+
 enum eBracketTypeFlags {
     BTF_AUTOCOMPLETE = 0x01,
-    BTF_HIGHLIGHT    = 0x02
+    BTF_HIGHLIGHT    = 0x02,
+    BTF_CHECK_TAGINV = 0x10
 };
 
 static int getLeftBracketType(const wchar_t wch, const unsigned int uFlags)
@@ -353,6 +564,13 @@ static int getLeftBracketType(const wchar_t wch, const unsigned int uFlags)
     case L'\'' :
       if (bBracketsDoSingleQuote || (bBracketsHighlightSingleQuote && (uFlags & BTF_HIGHLIGHT)))
         nLeftBracketType = tbtSglQuote;
+      break;
+    case L'>' :
+      if (uFlags & BTF_CHECK_TAGINV)
+      {
+        if (bBracketsDoTag || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
+          nLeftBracketType = tbtTagInv;
+      }
       break;
   }
 
@@ -412,6 +630,13 @@ static int getRightBracketType(const wchar_t wch, const unsigned int uFlags)
       if (bBracketsDoSingleQuote || (bBracketsHighlightSingleQuote && (uFlags & BTF_HIGHLIGHT)))
         nRightBracketType = tbtSglQuote;
       break;
+    case L'<' :
+      if (uFlags & BTF_CHECK_TAGINV)
+      {
+        if (bBracketsDoTag || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
+          nRightBracketType = tbtTagInv;
+      }
+      break;
   }
 
   if (nRightBracketType == tbtNone)
@@ -436,6 +661,28 @@ static int getRightBracketType(const wchar_t wch, const unsigned int uFlags)
     }
   }
 
+  return nRightBracketType;
+}
+
+static int getLeftBracketTypeEx(const wchar_t wch, const unsigned int uFlags)
+{
+  int nLeftBracketType = getLeftBracketType(wch, uFlags);
+  if (nLeftBracketType == tbtTag || nLeftBracketType == tbtTag2 || nLeftBracketType == tbtTagInv)
+  {
+    if (!(nCurrentFileType2 & tfmHtmlCompatible))
+      nLeftBracketType = tbtNone;
+  }
+  return nLeftBracketType;
+}
+
+static int getRightBracketTypeEx(const wchar_t wch, const unsigned int uFlags)
+{
+  int nRightBracketType = getRightBracketType(wch, uFlags);
+  if (nRightBracketType == tbtTag || nRightBracketType == tbtTag2 || nRightBracketType == tbtTagInv)
+  {
+    if (!(nCurrentFileType2 & tfmHtmlCompatible))
+      nRightBracketType = tbtNone;
+  }
   return nRightBracketType;
 }
 
@@ -537,17 +784,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
 
     if (nEditPos == nAutoRightBracketPos)
     {
-      wchar_t next_wch;
-
-      if (g_bOldWindows)
-      {
-        char next_ch = (char) AnyRichEdit_GetCharAt(pmsgi->hWnd, nEditPos);
-        next_wch = char2wchar(next_ch);
-      }
-      else
-      {
-        next_wch = AnyRichEdit_GetCharAtW(pmsgi->hWnd, nEditPos);
-      }
+      wchar_t next_wch = getCharAt(pmsgi->hWnd, nEditPos);
 
       if (getRightBracketType(next_wch, BTF_AUTOCOMPLETE) == nAutoRightBracketType)
       {
@@ -567,7 +804,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
           return;
         }
 
-        // one character has been typed, 
+        // one character has been typed,
         // so the auto-closed right bracket position increased
         ++nAutoRightBracketPos;
       }
@@ -606,9 +843,30 @@ void OnEditCharPressed(MSGINFO* pmsgi)
   }
 }
 
+static void updateActualState(HWND hEditWnd)
+{
+  int i;
+
+  if (hActualEditWnd != hEditWnd)
+  {
+    nAutoRightBracketPos = -1;
+    nAutoRightBracketType = tbtNone;
+    for (i = 0; i < HIGHLIGHT_INDEXES; i++)
+    {
+      IndexesHighlighted[i] = -1;
+      prevIndexesToHighlight[i] = -1;
+    }
+  }
+  hActualEditWnd = hEditWnd;
+  if (hActualEditWnd != hCurrentEditWnd)
+  {
+    nCurrentFileType = getFileType(&nCurrentFileType2);
+  }
+}
+
 void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
 {
-  INT         i;
+  int         i;
   BOOL        bHighlighted;
   INT_X       nEditPos;
   INT_X       nEditEndPos;
@@ -626,16 +884,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
   MessageBox(NULL, str, "OnEditGetActiveBrackets", MB_OK);
   */
 
-  if (hActualEditWnd != pmsgi->hWnd)
-  {
-    nAutoRightBracketPos = -1;
-    nAutoRightBracketType = tbtNone;
-  }
-  hActualEditWnd = pmsgi->hWnd;
-  if (hActualEditWnd != hCurrentEditWnd)
-  {
-    nCurrentFileType = getFileType(&nCurrentFileType2);
-  }
+  updateActualState(pmsgi->hWnd);
 
   // getting current position and selection
   if (g_bOldWindows)
@@ -879,11 +1128,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     TCHAR str[128];
   #endif
 
-  hActualEditWnd = pmsgi->hWnd;
-  if (hActualEditWnd != hCurrentEditWnd)
-  {
-    nCurrentFileType = getFileType(&nCurrentFileType2);
-  }
+  updateActualState(pmsgi->hWnd);
 
   if (nBracketType == tbtTag)
   {
@@ -942,7 +1187,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
             else
             {
               AnyRichEdit_GetTextAt(hActualEditWnd, nEditPos - 1, nSelLen + nBrPairLen + 1, pTextA);
-              // Note: 
+              // Note:
               // "+ 1" in "nSelLen + nBrPairLen + 1" deals with "< ... >" (tbtTag)
               // when it can be "< ... />" (tbtTag2) i.e. +1 symbol
             }
@@ -1049,7 +1294,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
             else
             {
               AnyRichEdit_GetTextAtW(hActualEditWnd, nEditPos - 1, nSelLen + nBrPairLen + 1, pTextW);
-              // Note: 
+              // Note:
               // "+ 1" in "nSelLen + nBrPairLen + 1" deals with "< ... >" (tbtTag)
               // when it can be "< ... />" (tbtTag2) i.e. +1 symbol
             }
@@ -1141,15 +1386,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
   }
 
   // getting next character
-  if (g_bOldWindows)
-  {
-    char next_ch = (char) AnyRichEdit_GetCharAt(hActualEditWnd, nEditPos);
-    next_wch = char2wchar(next_ch);
-  }
-  else
-  {
-    next_wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nEditPos);
-  }
+  next_wch = getCharAt(hActualEditWnd, nEditPos);
 
   #ifdef _verify_ab_
     wsprintf(str, "next_ch = %04X", next_wch);
@@ -1190,27 +1427,13 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     MessageBox(NULL, str, "AutoBracketsFunc", MB_OK);
   #endif
 
-  if ( bNextCharOK && 
-       ((nBracketType == tbtDblQuote) || 
-        (nBracketType == tbtSglQuote) ||
-        ((nBracketType >= tbtUser) && 
-         (getBracketsPairW(nBracketType)[0] == getBracketsPairW(nBracketType)[1]))
-       ) 
-     )
+  if ( bNextCharOK && isDuplicatedPair(nBracketType) )
   {
     wchar_t prev_wch;
 
     bPrevCharOK = FALSE;
     // getting previous character
-    if (g_bOldWindows)
-    {
-      char prev_ch = (char) AnyRichEdit_GetCharAt(hActualEditWnd, nEditPos-1);
-      prev_wch = char2wchar(prev_ch);
-    }
-    else
-    {
-      prev_wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nEditPos-1);
-    }
+    prev_wch = getCharAt(hActualEditWnd, nEditPos-1);
 
     #ifdef _verify_ab_
       wsprintf(str, "prev_ch = %04X", prev_wch);
@@ -1229,7 +1452,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
       {
         if (nBrType != nBracketType)
         {
-          //if (getBracketsPairW(nBrType)[0] != getBracketsPairW(nBrType)[1])
+          //if (!isDuplicatedPair(nBrType))
           {
             bPrevCharOK = TRUE;
           }
@@ -1238,7 +1461,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     }
   }
 
-  if (bPrevCharOK && bNextCharOK && 
+  if (bPrevCharOK && bNextCharOK &&
       bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1))
   {
     wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
@@ -1392,7 +1615,7 @@ static void updateCurrentBracketsIndexes(INT_X ind1, INT_X ind2)
 #define DP_NONE          0x00
 #define DP_FORWARD       0x01
 #define DP_BACKWARD      0x02
-#define DP_DETECT        0x10
+#define DP_DETECT        0x08
 #define DP_MAYBEFORWARD  (DP_DETECT | DP_FORWARD)
 #define DP_MAYBEBACKWARD (DP_DETECT | DP_BACKWARD)
 
@@ -1420,20 +1643,8 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
   if (nCharacterPosition <= 0)
     return DP_FORWARD; // no char before, search forward
 
-  if (g_bOldWindows)
-  {
-    char ch;
-
-    ch = AnyRichEdit_GetCharAt(hActualEditWnd, nCharacterPosition - 1);
-    prev_wch = char2wchar(ch);
-    ch = AnyRichEdit_GetCharAt(hActualEditWnd, nCharacterPosition + 1);
-    next_wch = char2wchar(ch);
-  }
-  else
-  {
-    prev_wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nCharacterPosition - 1);
-    next_wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nCharacterPosition + 1);
-  }
+  prev_wch = getCharAt(hActualEditWnd, nCharacterPosition - 1);
+  next_wch = getCharAt(hActualEditWnd, nCharacterPosition + 1);
 
   if (prev_wch == 0)
     return DP_FORWARD; // beginning of the file
@@ -1453,14 +1664,14 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
     hLocalEditWnd = hActualEditWnd;
   }
 
-  if (prev_wch == '\r' || 
+  if (prev_wch == '\r' ||
       prev_wch == '\n')
   {
     // previous char is EOL, search forward
     return isSepOrOneOfW(next_wch, &wordDelimiters) ? DP_MAYBEFORWARD : DP_FORWARD;
   }
 
-  if (next_wch == '\r' || 
+  if (next_wch == '\r' ||
       next_wch == '\n')
   {
     // next char is EOL, search backward
@@ -1645,9 +1856,13 @@ enum eGetHighLightResult {
     ghlrDoNotHighlight
 };
 
+// default implementation for getting matching brackets at the given position
 static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANGE *crAkelRange, CHARRANGE64 *crRichRange, AEHLPAINT *hlp)
 {
   tGetHighlightIndexesCookie* cookie;
+
+  (crRichRange); // unreferenced parameter
+  (crAkelRange); // unreferenced parameter
 
   cookie = (tGetHighlightIndexesCookie *) dwCookie;
   cookie->nResult = ghlrNone;
@@ -1687,7 +1902,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
       {
         if ( aeCh.lpLine->wpLine[aeCh.nCharInLine] == wch )
         {
-          cookie->pos1 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 
+          cookie->pos1 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET,
                                    0, (LPARAM) &aeCh);
           break;
         }
@@ -1696,7 +1911,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
     }
     /*else
     {
-      cookie->pos1 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 
+      cookie->pos1 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET,
                                0, (LPARAM) &hlp->qm.crQuoteStart.ciMin);
     }*/
 
@@ -1721,7 +1936,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
           {
             if ( aeCh.lpLine->wpLine[aeCh.nCharInLine] == wch )
             {
-              cookie->pos2 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 
+              cookie->pos2 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET,
                                        0, (LPARAM) &aeCh);
               break;
             }
@@ -1729,7 +1944,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
         }
         /*else
         {
-          cookie->pos2 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 
+          cookie->pos2 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET,
                                    0, (LPARAM) &hlp->qm.crQuoteEnd.ciMax);
           --cookie->pos2; // because the range is [ciMin; ciMax)
         }*/
@@ -1764,7 +1979,107 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
   return 0;
 }
 
-static void GetHighlightDataFromAkelEdit(const INT_X nCharacterPosition, tGetHighlightIndexesCookie* pCookieHL)
+// custom implementation for getting matching brackets _around_ the given position
+static DWORD CALLBACK GetAkelEditHighlightCallback2(UINT_PTR dwCookie, AECHARRANGE *crAkelRange, CHARRANGE64 *crRichRange, AEHLPAINT *hlp)
+{
+  INT_X nQmPos1 = -1, nQmPos2 = -1;
+  int nLeftBrType = tbtNone, nRightBrType = tbtNone;
+  wchar_t wch1, wch2;
+  tGetHighlightIndexesCookie* cookie;
+  AECHARINDEX* paeCh;
+
+  (crRichRange); // unreferenced parameter
+  (crAkelRange); // unreferenced parameter
+
+  cookie = (tGetHighlightIndexesCookie *) dwCookie;
+  
+  CharacterHighlightData_Clear(&cookie->chd);
+
+  if (hlp->qm.lpQuote)
+  {
+    // quote item
+    paeCh = &hlp->qm.crQuoteStart.ciMin;
+    nQmPos1 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 0, (LPARAM) paeCh);
+    wch1 = getCharAt(hActualEditWnd, nQmPos1);
+    ++nQmPos1; // after a left quote, if any
+    nLeftBrType = getLeftBracketTypeEx(wch1, BTF_HIGHLIGHT);
+    if (nLeftBrType != tbtNone)
+    {
+      paeCh = &hlp->qm.crQuoteEnd.ciMax;
+      nQmPos2 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 0, (LPARAM) paeCh);
+      --nQmPos2; // before a right quote, if any
+      wch2 = getCharAt(hActualEditWnd, nQmPos2);
+      nRightBrType = getRightBracketTypeEx(wch2, BTF_HIGHLIGHT);
+    }
+  }
+
+  if (nLeftBrType != tbtNone && nLeftBrType == nRightBrType)
+  {
+    cookie->pos1 = nQmPos1;
+    cookie->pos2 = nQmPos2;
+    cookie->nBracketType = nLeftBrType;
+    cookie->nResult = ghlrPair;
+  }
+  else
+  {
+    cookie->pos1 = -1;
+    cookie->pos2 = -1;
+    cookie->nBracketType = -1;
+    cookie->nResult = ghlrNone;
+  }
+
+  return 0;
+}
+
+static void GetFoldFromAkelEdit(const INT_X nCharacterPosition, tGetHighlightIndexesCookie* pCookie)
+{
+  pCookie->pos1 = -1;
+  pCookie->pos2 = -1;
+  pCookie->nResult = ghlrNone;
+  pCookie->nBracketType = -1;
+  CharacterHighlightData_Clear(&pCookie->chd);
+
+  if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] & XBR_HXM_AKELFOLD)
+  {
+    AEFINDFOLD ff;
+
+    ff.dwFlags = AEFF_FINDOFFSET | AEFF_FOLDSTART | AEFF_FOLDEND | AEFF_RECURSE;
+    ff.dwFindIt = nCharacterPosition;
+    ff.lpParent = NULL;
+    ff.lpPrevSubling = NULL;
+
+    SendMessage(hActualEditWnd, AEM_FINDFOLD, (WPARAM) &ff, 0);
+    if (ff.lpParent)
+    {
+      // fold found
+      INT_X nFmPos1, nFmPos2;
+      int nLeftBrType, nRightBrType;
+      wchar_t wch1, wch2;
+
+      nFmPos1 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 0, (LPARAM) &ff.lpParent->lpMinPoint->ciPoint);
+      wch1 = getCharAt(hActualEditWnd, nFmPos1);
+      ++nFmPos1; // after the left bracket, if any
+      nLeftBrType = getLeftBracketTypeEx(wch1, BTF_HIGHLIGHT);
+      if (nLeftBrType == tbtNone)
+        return; // not a bracket
+
+      nFmPos2 = (INT_X) SendMessage(hActualEditWnd, AEM_INDEXTORICHOFFSET, 0, (LPARAM) &ff.lpParent->lpMaxPoint->ciPoint);
+      nFmPos2 += ff.lpParent->lpMaxPoint->nPointLen;
+      --nFmPos2; // before the right bracket, if any
+      wch2 = getCharAt(hActualEditWnd, nFmPos2);
+      nRightBrType = getRightBracketTypeEx(wch2, BTF_HIGHLIGHT);
+      if (nRightBrType != nLeftBrType)
+        return; // not a bracket pair
+      
+      pCookie->pos1 = nFmPos1;
+      pCookie->pos2 = nFmPos2;
+      pCookie->nBracketType = nLeftBrType;
+      pCookie->nResult = ghlrPair;
+    }
+  }
+}
+
+static void GetHighlightDataFromAkelEdit(const INT_X nCharacterPosition, tGetHighlightIndexesCookie* pCookieHL, AEGetHighLightCallback pfnHighlightCallback)
 {
   pCookieHL->pos1 = -1;
   pCookieHL->pos2 = -1;
@@ -1778,8 +2093,8 @@ static void GetHighlightDataFromAkelEdit(const INT_X nCharacterPosition, tGetHig
     aehl.dwCookie = (UINT_PTR) pCookieHL;
     aehl.dwError = 0;
     aehl.dwFlags = 0/*AEGHF_NOSELECTION | AEGHF_NOACTIVELINETEXT | AEGHF_NOACTIVELINEBK*/;
-    aehl.lpCallback = GetAkelEditHighlightCallback;
-    SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, 
+    aehl.lpCallback = pfnHighlightCallback;
+    SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX,
       (WPARAM) nCharacterPosition, (LPARAM) &aehl.crText.ciMin);
     AEC_NextCharEx(&aehl.crText.ciMin, &aehl.crText.ciMax);
     // the range is [ciMin, ciMax)
@@ -1789,7 +2104,7 @@ static void GetHighlightDataFromAkelEdit(const INT_X nCharacterPosition, tGetHig
 
 static DWORD GetInSelectionState(const INT_X nCharacterPosition, const CHARRANGE_X* pSelection)
 {
-  if ((nCharacterPosition >= pSelection->cpMin) && 
+  if ((nCharacterPosition >= pSelection->cpMin) &&
       (nCharacterPosition < pSelection->cpMax))
   {
     return XBR_STATEFLAG_INSELECTION;
@@ -1798,7 +2113,7 @@ static DWORD GetInSelectionState(const INT_X nCharacterPosition, const CHARRANGE
     return 0;
 }
 
-static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nCharacterPosition, 
+static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nCharacterPosition,
              const int nBracketType, const BOOL bRightBracket, const CHARRANGE_X* pSelection)
 {
   tGetHighlightIndexesCookie cookie;
@@ -1960,13 +2275,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
                 cookie.pos2 = (INT_X) ff.lpParent->lpMinPoint->nPointOffset;
                 cookie.pos2 += (ff.lpParent->lpMinPoint->nPointLen /*- 1*/);
 
-                if (g_bOldWindows)
-                {
-                  const char ch = AnyRichEdit_GetCharAt(hActualEditWnd, cookie.pos2);
-                  wch = char2wchar(ch);
-                }
-                else
-                  wch = AnyRichEdit_GetCharAtW(hActualEditWnd, cookie.pos2);
+                wch = getCharAt(hActualEditWnd, cookie.pos2);
 
                 if (wch != L'>')
                 {
@@ -1987,13 +2296,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
           if (cookie.pos2 >= 0)
           {
-            if (g_bOldWindows)
-            {
-              const char ch = AnyRichEdit_GetCharAt(hActualEditWnd, cookie.pos2 - 1);
-              wch = char2wchar(ch);
-            }
-            else
-              wch = AnyRichEdit_GetCharAtW(hActualEditWnd, cookie.pos2 - 1);
+            wch = getCharAt(hActualEditWnd, cookie.pos2 - 1);
 
             if (wch == L'/')
             {
@@ -2013,7 +2316,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
   // ...then we check for a highlight info...
   cookieHL.nBracketType = nBracketType;
-  GetHighlightDataFromAkelEdit(nCharacterPosition, &cookieHL);
+  GetHighlightDataFromAkelEdit(nCharacterPosition, &cookieHL, GetAkelEditHighlightCallback);
 
   if (cookie.nResult == ghlrPair)
   {
@@ -2084,7 +2387,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         {
           bReadyHL = TRUE;
           cookieHL.nBracketType = -1;
-          GetHighlightDataFromAkelEdit(cookie.pos1, &cookieHL);
+          GetHighlightDataFromAkelEdit(cookie.pos1, &cookieHL, GetAkelEditHighlightCallback);
           cookieHL.chd.dwState |= GetInSelectionState(cookie.pos1, pSelection);
           CharacterInfo_Add(hgltCharacterInfo, cookie.pos1, &cookieHL.chd);
         }
@@ -2100,7 +2403,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           {
             bReadyHL = TRUE;
             cookieHL.nBracketType = -1;
-            GetHighlightDataFromAkelEdit(cookie.pos2 - 1, &cookieHL);
+            GetHighlightDataFromAkelEdit(cookie.pos2 - 1, &cookieHL, GetAkelEditHighlightCallback);
             cookieHL.chd.dwState |= GetInSelectionState(cookie.pos2 - 1, pSelection);
           }
           CharacterInfo_Add(hgltCharacterInfo, cookie.pos2 - 1, &cookieHL.chd);
@@ -2117,7 +2420,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           {
             bReadyHL = TRUE;
             cookieHL.nBracketType = -1;
-            GetHighlightDataFromAkelEdit(cookie.pos2, &cookieHL);
+            GetHighlightDataFromAkelEdit(cookie.pos2, &cookieHL, GetAkelEditHighlightCallback);
             cookieHL.chd.dwState |= GetInSelectionState(cookie.pos2, pSelection);
           }
           CharacterInfo_Add(hgltCharacterInfo, cookie.pos2, &cookieHL.chd);
@@ -2139,7 +2442,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         {
           bReadyHL = TRUE;
           cookieHL.nBracketType = -1;
-          GetHighlightDataFromAkelEdit(cookie.pos1, &cookieHL);
+          GetHighlightDataFromAkelEdit(cookie.pos1, &cookieHL, GetAkelEditHighlightCallback);
           cookieHL.chd.dwState |= GetInSelectionState(cookie.pos1, pSelection);
           CharacterInfo_Add(hgltCharacterInfo, cookie.pos1, &cookieHL.chd);
         }
@@ -2155,7 +2458,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           {
             bReadyHL = TRUE;
             cookieHL.nBracketType = -1;
-            GetHighlightDataFromAkelEdit(cookie.pos2, &cookieHL);
+            GetHighlightDataFromAkelEdit(cookie.pos2, &cookieHL, GetAkelEditHighlightCallback);
             cookieHL.chd.dwState |= GetInSelectionState(cookie.pos2, pSelection);
           }
           CharacterInfo_Add(hgltCharacterInfo, cookie.pos2, &cookieHL.chd);
@@ -2170,7 +2473,1130 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   return cookie.nResult;
 }
 
-/*static*/ BOOL GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex, 
+static BOOL NearestBr_MatchCachedIndexes(const int action, const INT_X nCharacterPosition, CHARRANGE_X* out_cr)
+{
+  if ( NearestBracketsIndexes[0] != -1 )
+  {
+    if ( nCharacterPosition == NearestBracketsIndexes[0] ) // |(
+    {
+      if ( NearestBracketsIndexes[2] == tbtTagInv )
+        return FALSE;  //  skip  |>...<
+
+      if ( action == XBRA_SELTO_NEARBR )
+      {
+        out_cr->cpMin = NearestBracketsIndexes[0];     // |( ...
+        out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ... )|
+      }
+      else
+      {
+        out_cr->cpMin = NearestBracketsIndexes[1] + 1; // )|
+        out_cr->cpMax = out_cr->cpMin;
+      }
+      return TRUE;
+    }
+
+    if ( nCharacterPosition == NearestBracketsIndexes[0] + 1 ) // (|
+    {
+      if ( action == XBRA_SELTO_NEARBR )
+      {
+        if ( (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) &&
+             (NearestBracketsIndexes[2] != tbtTagInv) )
+        {
+          out_cr->cpMin = NearestBracketsIndexes[0];     // |( ...
+          out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ... )|
+        }
+        else
+        {
+          out_cr->cpMin = NearestBracketsIndexes[0] + 1; // (| ...
+          out_cr->cpMax = NearestBracketsIndexes[1];     //    ... |)
+        }
+      }
+      else
+      {
+        if ( (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) &&
+             (NearestBracketsIndexes[2] != tbtTagInv) )
+          out_cr->cpMin = NearestBracketsIndexes[1] + 1; // )|
+        else
+          out_cr->cpMin = NearestBracketsIndexes[1]; // |)
+        out_cr->cpMax = out_cr->cpMin;
+      }
+      return TRUE;
+    }
+
+    if ( nCharacterPosition == NearestBracketsIndexes[1] ) // |)
+    {
+      if ( action == XBRA_SELTO_NEARBR )
+      {
+        if ( (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) &&
+             (NearestBracketsIndexes[2] != tbtTagInv) )
+        {
+          out_cr->cpMin = NearestBracketsIndexes[0];     // |( ...
+          out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ... )|
+        }
+        else
+        {
+          out_cr->cpMin = NearestBracketsIndexes[0] + 1; // (| ...
+          out_cr->cpMax = NearestBracketsIndexes[1];     //    ... |)
+        }
+      }
+      else
+      {
+        if ( (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) &&
+             (NearestBracketsIndexes[2] != tbtTagInv) )
+          out_cr->cpMin = NearestBracketsIndexes[0]; // |(
+        else
+          out_cr->cpMin = NearestBracketsIndexes[0] + 1; // (|
+        out_cr->cpMax = out_cr->cpMin;
+      }
+      return TRUE;
+    }
+
+    if ( nCharacterPosition == NearestBracketsIndexes[1] + 1 ) // )|
+    {
+      if ( NearestBracketsIndexes[2] == tbtTagInv )
+        return FALSE;  //  skip  >...<|
+
+      if ( action == XBRA_SELTO_NEARBR )
+      {
+        out_cr->cpMin = NearestBracketsIndexes[0];     // |( ...
+        out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ... )|
+      }
+      else
+      {
+        out_cr->cpMin = NearestBracketsIndexes[0]; // |(
+        out_cr->cpMax = out_cr->cpMin;
+      }
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+enum eAtBrChar {
+  abcNone        = 0x00,
+  abcLeftBr      = 0x01, // left:  (
+  abcRightBr     = 0x02, // right: )
+  abcDetectBr    = 0x04, // can be either left or right
+  abcBrIsOnLeft  = 0x10, // on left:  (|  or  )|
+  abcBrIsOnRight = 0x20  // on right: |(  or  |)
+};
+
+enum eFoldQuoteFlags {
+  fqfDoNotCheckFold  = 0x1000,
+  fqfDoNotCheckQuote = 0x2000
+};
+
+static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPosition, const INT_X nTextLength,
+                                                   int* out_nBrType, int* out_nDupDirection)
+{
+  INT_X nPos;
+  INT_X nLen;
+  int nBrType = tbtNone;
+  int nDupDir = DP_NONE;
+  int nDetectBrType = tbtNone;
+  unsigned int nDetectBrAtPos = abcNone;
+  unsigned int uFlags;
+  wchar_t wch[4] = { 0, 0, 0, 0 }; // { prev_wch, current_wch, 0, 0 }
+
+  *out_nBrType = tbtNone;
+  *out_nDupDirection = DP_NONE;
+
+  if ( nCharacterPosition == 0 )
+  {
+    nPos = 0;
+    if ( nTextLength == 0 )
+      nLen = 0; // { 0, 0 }
+    else
+      nLen = 1; // { 0, current_wch }
+  }
+  else
+  {
+    nPos = nCharacterPosition - 1;
+    nLen = nTextLength - nPos;
+    if ( nLen > 2 )
+      nLen = 2; // { prev_wch, current_wch }
+  }
+
+  if ( g_bOldWindows )
+  {
+    char ch[4] = { 0, 0, 0, 0 };
+    AnyRichEdit_GetTextAt(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? ch + 1 : ch);
+    wch[0] = char2wchar(ch[0]);
+    wch[1] = char2wchar(ch[1]);
+  }
+  else
+  {
+    AnyRichEdit_GetTextAtW(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? wch + 1 : wch);
+  }
+
+  if ( wch[0] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT;
+    if ( wch[1] != 0 && wch[1] != L'\r' )
+      uFlags |= BTF_CHECK_TAGINV;
+    nBrType = getLeftBracketTypeEx(wch[0], uFlags); // prev_wch
+    if ( nBrType != tbtNone ) //  (|
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition - 1, wch[0]);
+        if ( nDupDir == DP_FORWARD || nDupDir == DP_MAYBEFORWARD )
+        {
+          *out_nDupDirection = nDupDir;
+        }
+        else if ( nDupDir == DP_DETECT )
+        {
+          nDetectBrAtPos = abcBrIsOnLeft;
+          nDetectBrType = nBrType;
+          nBrType = tbtNone;
+        }
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcLeftBr | abcBrIsOnLeft);
+      }
+    }
+  }
+
+  if ( wch[1] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT;
+    if ( wch[0] != 0 && wch[0] != L'\r' )
+      uFlags |= BTF_CHECK_TAGINV;
+    nBrType = getLeftBracketTypeEx(wch[1], uFlags); // current_wch
+    if ( nBrType != tbtNone && nBrType != tbtTagInv ) //  |(
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition, wch[1]);
+        if ( nDupDir == DP_FORWARD || nDupDir == DP_MAYBEFORWARD )
+        {
+          *out_nDupDirection = nDupDir;
+        }
+        else if ( nDupDir == DP_DETECT )
+        {
+          nDetectBrAtPos = abcBrIsOnRight;
+          nDetectBrType = nBrType;
+          nBrType = tbtNone;
+        }
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcLeftBr | abcBrIsOnRight);
+      }
+    }
+  }
+
+  if ( wch[1] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT;
+    if ( wch[0] != 0 && wch[0] != L'\r' )
+      uFlags |= BTF_CHECK_TAGINV;
+    nBrType = getRightBracketTypeEx(wch[1], uFlags); // current_wch
+    if ( nBrType != tbtNone ) //  |)
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition, wch[1]);
+        if ( nDupDir == DP_BACKWARD || nDupDir == DP_MAYBEBACKWARD )
+          *out_nDupDirection = nDupDir;
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcRightBr | abcBrIsOnRight);
+      }
+    }
+  }
+
+  if ( wch[0] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT;
+    if ( wch[1] != 0 && wch[1] != L'\r' )
+      uFlags |= BTF_CHECK_TAGINV;
+    nBrType = getRightBracketTypeEx(wch[0], uFlags); // prev_wch
+    if ( nBrType != tbtNone && nBrType != tbtTagInv ) //  )|
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition - 1, wch[0]);
+        if ( nDupDir == DP_BACKWARD || nDupDir == DP_MAYBEBACKWARD )
+          *out_nDupDirection = nDupDir;
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcRightBr | abcBrIsOnLeft);
+      }
+    }
+  }
+
+  if ( nDetectBrType != tbtNone )
+  {
+    *out_nBrType = nDetectBrType;
+    *out_nDupDirection = DP_DETECT;
+    return (abcDetectBr | nDetectBrAtPos);
+  }
+
+  return (abcNone);
+}
+
+static BOOL NearestBr_GetFoldOrQuoteFromAkelEdit(const INT_X nPos, const unsigned int nAtBrFQFlags, tGetHighlightIndexesCookie* out_brCookie)
+{
+  out_brCookie->nResult = ghlrNone;
+  out_brCookie->pos1 = -1;
+  out_brCookie->pos2 = -1;
+
+  if ( g_bAkelEdit )
+  {
+    INT_X nFmPos1 = -1, nFmPos2 = -1;
+    INT_X nQmPos1 = -1, nQmPos2 = -1;
+    int nFmBrType = tbtNone, nQmBrType = tbtNone;
+    tGetHighlightIndexesCookie cookie;
+
+    if ( (nAtBrFQFlags & fqfDoNotCheckFold) == 0 )
+    {
+      // check for a fold...
+      // (we might use AEM_HLGETHIGHLIGHT for both folds and quotes,
+      //  but unfortunately it does not work at the end of a line)
+      cookie.nResult = ghlrNone;
+      GetFoldFromAkelEdit(nPos, &cookie);
+      if ( (cookie.nResult == ghlrNone) && (nAtBrFQFlags & abcDetectBr) )
+      {
+        INT_X nTryPos;
+        if ( nAtBrFQFlags & abcBrIsOnLeft )
+          nTryPos = nPos - 1;  //  trying  "..."|  ->  "...|"
+        else
+          nTryPos = nPos + 1;  //  trying  |"..."  ->  "|..."
+        GetFoldFromAkelEdit(nTryPos, &cookie);
+      }
+      if ( cookie.nResult == ghlrPair )
+      {
+        nFmPos1 = cookie.pos1;
+        nFmPos2 = cookie.pos2;
+        nFmBrType = cookie.nBracketType;
+      }
+    }
+    
+    if ( (nAtBrFQFlags & fqfDoNotCheckQuote) == 0 )
+    {
+      // check for a quote...
+      cookie.nResult = ghlrNone;
+      GetHighlightDataFromAkelEdit(nPos, &cookie, GetAkelEditHighlightCallback2);
+      if ( (cookie.nResult == ghlrNone) && (nAtBrFQFlags & abcDetectBr) )
+      {
+        INT_X nTryPos;
+        if ( nAtBrFQFlags & abcBrIsOnLeft )
+          nTryPos = nPos - 1;  //  trying  "..."|  ->  "...|"
+        else
+          nTryPos = nPos + 1;  //  trying  |"..."  ->  "|..."
+        GetHighlightDataFromAkelEdit(nTryPos, &cookie, GetAkelEditHighlightCallback2);
+      }
+      if ( cookie.nResult == ghlrPair )
+      {
+        nQmPos1 = cookie.pos1;
+        nQmPos2 = cookie.pos2;
+        nQmBrType = cookie.nBracketType;
+      }
+    }
+
+    // pick the nearest range, if any... 
+    if (nFmPos1 >= 0 && nFmPos2 >= 0)
+    {
+      if (nQmPos1 >= 0 && nQmPos2 >= 0)
+      {
+        if (nFmPos2 - nFmPos1 < nQmPos2 - nQmPos1)
+        {
+          out_brCookie->pos1 = nFmPos1;
+          out_brCookie->pos2 = nFmPos2;
+          out_brCookie->nBracketType = nFmBrType;
+        }
+        else
+        {
+          out_brCookie->pos1 = nQmPos1;
+          out_brCookie->pos2 = nQmPos2;
+          out_brCookie->nBracketType = nQmBrType;
+        }
+      }
+      else
+      {
+        out_brCookie->pos1 = nFmPos1;
+        out_brCookie->pos2 = nFmPos2;
+        out_brCookie->nBracketType = nFmBrType;
+      }
+      out_brCookie->nResult = ghlrPair;
+    }
+    else if (nQmPos1 >= 0 && nQmPos2 >= 0)
+    {
+      out_brCookie->pos1 = nQmPos1;
+      out_brCookie->pos2 = nQmPos2;
+      out_brCookie->nBracketType = nQmBrType;
+      out_brCookie->nResult = ghlrPair;
+    }
+  }
+
+  return (out_brCookie->nResult == ghlrPair);
+}
+
+#define XBR_NEARESTBR_OCC_ITEMS 4
+
+typedef struct sGetNearestBracketsState {
+    INT_X nCharacterPosition;
+    INT_X nTextLength;
+    INT_X nLeftBrPos;
+    INT_X nRightBrPos;
+    int nLeftBrType;
+    int nRightBrType;
+    int nLeftDupDirection;
+    int nRightDupDirection;
+    tOccurrenceItem occItems[XBR_NEARESTBR_OCC_ITEMS];
+    tOccurrencesData occData;
+} tGetNearestBracketsState;
+
+static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState* state, const tGetHighlightIndexesCookie* brCookie)
+{
+  INT_X   nStopPos;
+  INT_X   nBrPos;
+  int     nBrType;
+  int     nDupPairDirection;
+  wchar_t wch;
+  tOccurrenceCookie cookie;
+  AECHARINDEX       aeci;
+
+  if ( state->nLeftBrType == tbtNone && nStartPos != 0 )
+  {
+    nStopPos = 0;
+    if ( g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] != 0 )
+    {
+      int nLine;
+      if ( g_bOldWindows )
+        nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, nStartPos);
+      else
+        nLine = AnyRichEdit_ExLineFromCharW(hActualEditWnd, nStartPos);
+      if ( ((DWORD) nLine) > (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1) )
+      {
+        nLine -= (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1);
+        if ( g_bOldWindows )
+          nStopPos = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
+        else
+          nStopPos = AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
+      }
+    }
+    if ( brCookie->nResult == ghlrPair )
+    {
+      // optimization: don't search outside of the range pos1...pos2
+      if ( nStopPos < brCookie->pos1 )
+      {
+        nStopPos = brCookie->pos1;
+        if ( brCookie->nBracketType == tbtTag || brCookie->nBracketType == tbtTag2 )
+          --nStopPos; // including the '<' to be able to find the paired '>'
+      }
+    }
+
+    nBrPos = nStartPos - 1;
+    if ( g_bAkelEdit )
+    {
+      if ( g_bOldWindows )
+        SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
+      else
+        SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
+    }
+    for ( ; nBrPos >= nStopPos; --nBrPos )
+    {
+      if ( g_bAkelEdit )
+      {
+        #if NEARBR_CHARINDEX_LOOP_VERIFY
+          wchar_t wch0;
+        #endif
+
+        wch = aeci.lpLine->wpLine[aeci.nCharInLine];
+        if ( aeci.nCharInLine == 0 )
+        {
+          AEC_PrevLine(&aeci);
+          if ( aeci.lpLine )
+          {
+            if ( aeci.lpLine->nLineBreak == AELB_WRAP )
+              AEC_IndexDec(&aeci);
+          }
+          else
+            break;
+        }
+        else
+          AEC_IndexDec(&aeci);
+
+        #if NEARBR_CHARINDEX_LOOP_VERIFY
+          if ( g_bOldWindows )
+            wch0 = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
+          else
+            wch0 = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
+          if (wch0 != wch)
+          {
+            if (wch == 0 && wch0 == L'\r')
+            {
+            }
+            else
+            {
+              wch = wch;
+              wch0 = wch0;
+
+              #if NEARBR_CHARINDEX_LOOP_USE_DEBUGBREAK
+                DebugBreak();
+              #endif
+            }
+          }
+        #endif
+      }
+      else
+      {
+        if ( g_bOldWindows )
+          wch = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
+        else
+          wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
+      }
+      nBrType = getLeftBracketTypeEx(wch, BTF_HIGHLIGHT | BTF_CHECK_TAGINV);
+      if ( nBrType != tbtNone )
+      {
+        if ( isEscapedPosEx(nBrPos) )
+        {
+          nBrType = tbtNone;
+        }
+        else
+        {
+          if ( isDuplicatedPair(nBrType) )
+          {
+            tGetHighlightIndexesCookie c;
+            if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nBrPos, abcDetectBr | abcBrIsOnRight | fqfDoNotCheckFold, &c) )
+            {
+              nBrPos = c.pos1 - 1;  //  "|...  ->  |"...
+              if ( g_bAkelEdit )
+              {
+                if ( g_bOldWindows )
+                  SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
+                else
+                  SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
+              }
+              continue;
+            }
+
+            nDupPairDirection = getDuplicatedPairDirection(nBrPos, wch);
+            if ( nDupPairDirection == DP_FORWARD || nDupPairDirection == DP_MAYBEFORWARD )
+            {
+              // left quote found
+              if ( !OccurrencesData_Contains(&state->occData, nBrType, &cookie) )
+              {
+                if ( OccurrencesData_IsEmpty(&state->occData) )
+                {
+                  state->nLeftBrType = nBrType;
+                  state->nLeftBrPos = nBrPos + 1; // exclude the bracket itself
+                  state->nLeftDupDirection = nDupPairDirection;
+                  break; // OK, found
+                }
+                else
+                {
+                  // could be either a left quote inside (another) quotes
+                  // or a left quote outside (another) quotes, not sure...
+                  break;
+                }
+              }
+              else
+              {
+                if ( getDirectionRank(nDupPairDirection, cookie.nDirection) >= getDirectionRank(DP_FORWARD, DP_DETECT) )
+                  OccurrencesData_Decrement(&state->occData, nBrType);
+                else
+                  break; // can't be sure if it is a pair of quotes
+              }
+            }
+            else if ( nDupPairDirection == DP_DETECT )
+            {
+              // can be either left or right quote, let's check...
+              if ( OccurrencesData_Contains(&state->occData, nBrType, &cookie) )
+              {
+                if ( cookie.nDirection == DP_BACKWARD ) // getDirectionRank(DP_DETECT, DP_BACKWARD)
+                  OccurrencesData_Decrement(&state->occData, nBrType); // looks like a left quote
+                else
+                  break; // can't be sure if it's a pair of quotes or not
+              }
+              else if ( state->nRightBrType == nBrType &&
+                        state->nRightDupDirection == DP_BACKWARD ) // getDirectionRank(DP_DETECT, DP_BACKWARD)
+              {
+                state->nLeftBrType = nBrType;
+                state->nLeftBrPos = nBrPos + 1; // exclude the bracket itself
+                state->nLeftDupDirection = nDupPairDirection;
+                break; // OK, found
+              }
+              else
+              {
+                // treating it as a right quote
+                cookie.nPos = nBrPos + 1;
+                cookie.nDirection = nDupPairDirection;
+                if ( !OccurrencesData_Increment(&state->occData, nBrType, &cookie) )
+                  break; // no more room
+              }
+            }
+            else
+            {
+              // right quote found while looking for a left one
+              cookie.nPos = nBrPos + 1;
+              cookie.nDirection = nDupPairDirection;
+              if ( !OccurrencesData_Increment(&state->occData, nBrType, &cookie) )
+                break; // no more room
+            }
+          }
+          else
+          {
+            if ( !OccurrencesData_Contains(&state->occData, nBrType, NULL) )
+            {
+              if ( OccurrencesData_IsEmpty(&state->occData) )
+              {
+                state->nLeftBrType = nBrType;
+                state->nLeftBrPos = nBrPos + 1; // exclude the bracket itself
+                state->nLeftDupDirection = DP_NONE;
+                break; // OK, found
+              }
+              else
+              {
+                // could be either a left bracket inside quotes
+                // or a left bracket outside quotes, not sure...
+                break;
+              }
+            }
+            else
+              OccurrencesData_Decrement(&state->occData, nBrType);
+          }
+        }
+      }
+      else
+      {
+        nBrType = getRightBracketTypeEx(wch, BTF_HIGHLIGHT | BTF_CHECK_TAGINV);
+        if ( nBrType != tbtNone )
+        {
+          if ( !isEscapedPosEx(nBrPos) )
+          {
+            // found a right bracket instead of a left bracket
+            if ( !OccurrencesData_Increment(&state->occData, nBrType, NULL) )
+              break; // no more room
+          }
+        }
+      }
+    }
+  }
+
+  return (state->nLeftBrType != tbtNone);
+}
+
+static void NearestBr_AdjustLeftBracketPos(tGetNearestBracketsState* state)
+{
+  if ( !OccurrencesData_IsEmpty(&state->occData) )
+  {
+    const tOccurrenceItem* poci;
+    int i;
+
+    for (i = 0; i < XBR_NEARESTBR_OCC_ITEMS; i++)
+    {
+      poci = &state->occData.pItems[i];
+      if ( poci->nDepth != 0 && isDuplicatedPair(poci->nType) )
+      {
+        if ( state->nLeftBrType == tbtNone || state->nLeftBrPos < poci->cookies[0].nPos )
+        {
+          if ( poci->cookies[0].nDirection == DP_DETECT ) // skipping DP_*BACKWARD
+          {
+            state->nLeftBrPos = poci->cookies[0].nPos;
+            state->nLeftDupDirection = poci->cookies[0].nDirection;
+            state->nLeftBrType = poci->nType;
+          }
+        }
+      }
+    }
+
+    if ( state->nLeftDupDirection != DP_NONE )
+      OccurrencesData_Clear(&state->occData);
+  }
+}
+
+static BOOL NearestBr_FindRightBracket(INT_X nStartPos, tGetNearestBracketsState* state, const tGetHighlightIndexesCookie* brCookie)
+{
+  INT_X   nStopPos;
+  INT_X   nBrPos;
+  int     nBrType;
+  int     nDupPairDirection;
+  wchar_t wch;
+  tOccurrenceCookie cookie;
+  AECHARINDEX       aeci;
+
+  if ( state->nRightBrType == tbtNone )
+  {
+    nStopPos = state->nTextLength;
+    if ( g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] != 0 )
+    {
+      int nLine1, nLine2;
+      if ( g_bOldWindows )
+      {
+        nLine1 = AnyRichEdit_ExLineFromChar(hActualEditWnd, nStartPos);
+        nLine2 = AnyRichEdit_ExLineFromChar(hActualEditWnd, state->nTextLength);
+      }
+      else
+      {
+        nLine1 = AnyRichEdit_ExLineFromCharW(hActualEditWnd, nStartPos);
+        nLine2 = AnyRichEdit_ExLineFromCharW(hActualEditWnd, state->nTextLength);
+      }
+      if ( ((DWORD) (nLine2 - nLine1)) > (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1) )
+      {
+        nLine2 = nLine1 + g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES]; // - 1 + 1
+        // to the end of nLine2 (= to the beginning of the next line)
+        if ( g_bOldWindows )
+          nStopPos = AnyRichEdit_LineIndex(hActualEditWnd, nLine2);
+        else
+          nStopPos = AnyRichEdit_LineIndexW(hActualEditWnd, nLine2);
+      }
+    }
+    if ( brCookie->nResult == ghlrPair )
+    {
+      // optimization: don't search outside of the range pos1...pos2
+      if ( nStopPos > brCookie->pos2 )
+      {
+        nStopPos = brCookie->pos2;
+        if ( brCookie->nBracketType == tbtTag || brCookie->nBracketType == tbtTag2 )
+          ++nStopPos; // including the '>' to be able to find the paired '<'
+      }
+    }
+
+    nBrPos = nStartPos;
+    if ( g_bAkelEdit )
+    {
+      if ( g_bOldWindows )
+        SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
+      else
+        SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
+    }
+    for ( ; nBrPos < nStopPos; ++nBrPos )
+    {
+      if ( g_bAkelEdit )
+      {
+        #if NEARBR_CHARINDEX_LOOP_VERIFY
+          wchar_t wch0;
+        #endif
+
+        wch = aeci.lpLine->wpLine[aeci.nCharInLine];
+        if ( aeci.nCharInLine == aeci.lpLine->nLineLen )
+        {
+          AEC_NextLine(&aeci);
+          if ( aeci.lpLine )
+          {
+            if ( aeci.lpLine->prev->nLineBreak == AELB_WRAP )
+            {
+              wch = aeci.lpLine->wpLine[aeci.nCharInLine];
+              AEC_IndexInc(&aeci);
+            }
+          }
+          else
+            break;
+        }
+        else
+          AEC_IndexInc(&aeci);
+
+        #if NEARBR_CHARINDEX_LOOP_VERIFY
+          if ( g_bOldWindows )
+            wch0 = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
+          else
+            wch0 = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
+          if (wch0 != wch)
+          {
+            if (wch == 0 && wch0 == L'\r')
+            {
+            }
+            else
+            {
+              wch = wch;
+              wch0 = wch0;
+
+              #if NEARBR_CHARINDEX_LOOP_USE_DEBUGBREAK
+                DebugBreak();
+              #endif
+            }
+          }
+        #endif
+      }
+      else
+      {
+        if ( g_bOldWindows )
+          wch = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
+        else
+          wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
+      }
+      nBrType = getRightBracketTypeEx(wch, BTF_HIGHLIGHT | BTF_CHECK_TAGINV);
+      if ( nBrType != tbtNone )
+      {
+        if ( isEscapedPosEx(nBrPos) )
+        {
+          nBrType = tbtNone;
+        }
+        else
+        {
+          if ( isDuplicatedPair(nBrType) )
+          {
+            tGetHighlightIndexesCookie c;
+            if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nBrPos, abcDetectBr | abcBrIsOnRight | fqfDoNotCheckFold, &c) )
+            {
+              nBrPos = c.pos2;  //  ...|"
+              if ( g_bAkelEdit )
+              {
+                if ( g_bOldWindows )
+                  SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
+                else
+                  SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
+              }
+              continue;
+            }
+
+            nDupPairDirection = getDuplicatedPairDirection(nBrPos, wch);
+            if ( nDupPairDirection == DP_BACKWARD || nDupPairDirection == DP_MAYBEBACKWARD )
+            {
+              // right quote found
+              if ( !OccurrencesData_Contains(&state->occData, nBrType, &cookie) )
+              {
+                if ( OccurrencesData_IsEmpty(&state->occData) )
+                {
+                  state->nRightBrType = nBrType;
+                  state->nRightBrPos = nBrPos;
+                  state->nRightDupDirection = nDupPairDirection;
+                  break; // OK, found
+                }
+                else
+                {
+                  // could be either a right quote inside (another) quotes
+                  // or a right quote outside (another) quotes, not sure...
+                  break;
+                }
+              }
+              else
+              {
+                if ( getDirectionRank(cookie.nDirection, nDupPairDirection) >= getDirectionRank(DP_DETECT, DP_BACKWARD) )
+                  OccurrencesData_Decrement(&state->occData, nBrType);
+                else
+                  break; // can't be sure if it is a pair of quotes
+              }
+            }
+            else if ( nDupPairDirection == DP_DETECT )
+            {
+              // can be either left or right quote, let's check...
+              if ( OccurrencesData_Contains(&state->occData, nBrType, &cookie) )
+              {
+                if ( cookie.nDirection == DP_FORWARD ) // getDirectionRank(DP_FORWARD, DP_DETECT)
+                  OccurrencesData_Decrement(&state->occData, nBrType); // looks like a right quote
+                else
+                  break; // can't be sure if it's a pair of quotes or not
+              }
+              else if ( state->nLeftBrType == nBrType &&
+                        state->nLeftDupDirection == DP_FORWARD ) // getDirectionRank(DP_FORWARD, DP_DETECT)
+              {
+                if ( OccurrencesData_IsEmpty(&state->occData) )
+                {
+                  state->nRightBrType = nBrType;
+                  state->nRightBrPos = nBrPos;
+                  state->nRightDupDirection = nDupPairDirection;
+                  break; // OK, found
+                }
+                else
+                {
+                  // could be either a right quote inside (another) quotes
+                  // or a right quote outside (another) quotes, not sure...
+                  break;
+                }
+              }
+              else
+              {
+                // treating it as a left quote
+                cookie.nPos = nBrPos;
+                cookie.nDirection = nDupPairDirection;
+                if ( !OccurrencesData_Increment(&state->occData, nBrType, &cookie) )
+                  break; // no more room
+              }
+            }
+            else
+            {
+              // left quote found while looking for a right one
+              cookie.nPos = nBrPos;
+              cookie.nDirection = nDupPairDirection;
+              if ( !OccurrencesData_Increment(&state->occData, nBrType, &cookie) )
+                break; // no more room
+            }
+          }
+          else
+          {
+            if ( !OccurrencesData_Contains(&state->occData, nBrType, NULL) )
+            {
+              if ( OccurrencesData_IsEmpty(&state->occData) )
+              {
+                state->nRightBrType = nBrType;
+                state->nRightBrPos = nBrPos;
+                state->nRightDupDirection = DP_NONE;
+                break; // OK, found
+              }
+              else
+              {
+                // could be either a right bracket inside quotes
+                // or a right bracket outside quotes, not sure...
+                break;
+              }
+            }
+            else
+              OccurrencesData_Decrement(&state->occData, nBrType);
+          }
+        }
+      }
+      else
+      {
+        nBrType = getLeftBracketTypeEx(wch, BTF_HIGHLIGHT | BTF_CHECK_TAGINV);
+        if ( nBrType != tbtNone )
+        {
+          if ( !isEscapedPosEx(nBrPos) )
+          {
+            // found a left bracket instead of a right bracket
+            if ( !OccurrencesData_Increment(&state->occData, nBrType, NULL) )
+              break; // no more room
+          }
+        }
+      }
+    }
+  }
+
+  return (state->nRightBrType != tbtNone);
+}
+
+static BOOL NearestBr_ApplyStateToRange(const int action, const INT_X nStartPos, const tGetNearestBracketsState* state, CHARRANGE_X* out_cr)
+{
+  if ( state->nRightBrType != tbtNone && state->nRightBrType == state->nLeftBrType )
+  {
+    INT_X nLeftBrPos;
+    INT_X nRightBrPos;
+
+    // OK, pair found
+    NearestBracketsIndexes[0] = state->nLeftBrPos - 1; // position of the left bracket: |(
+    NearestBracketsIndexes[1] = state->nRightBrPos;   // position of the right bracket: |)
+    NearestBracketsIndexes[2] = state->nRightBrType;
+
+    nLeftBrPos = state->nLeftBrPos;
+    nRightBrPos = state->nRightBrPos;
+
+    if ( action == XBRA_SELTO_NEARBR )
+    {
+      if ( (state->nRightBrType != tbtTagInv) &&
+           ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) ||
+            (state->nCharacterPosition != nStartPos)) )
+      {
+        --nLeftBrPos;
+        ++nRightBrPos;
+      }
+
+      out_cr->cpMin = nLeftBrPos;
+      out_cr->cpMax = nRightBrPos;
+    }
+    else
+    {
+      if ( (state->nRightBrType != tbtTagInv) &&
+           ((g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) ||
+            (state->nCharacterPosition != nStartPos)) )
+      {
+        --nLeftBrPos;
+        ++nRightBrPos;
+      }
+
+      if ( (state->nCharacterPosition == nLeftBrPos) ||
+           (state->nCharacterPosition == nStartPos && nStartPos == state->nLeftBrPos) )
+      {
+        out_cr->cpMin = nRightBrPos;
+        out_cr->cpMax = nRightBrPos;
+      }
+      else if ( (state->nCharacterPosition == nRightBrPos) ||
+                (state->nCharacterPosition == nStartPos && nStartPos == state->nRightBrPos) )
+      {
+        out_cr->cpMin = nLeftBrPos;
+        out_cr->cpMax = nLeftBrPos;
+      }
+      else if ( ((g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_ALWAYSLEFT) != 0) ||
+                ( ((g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_ALWAYSRIGHT) == 0) &&
+                  (state->nCharacterPosition - nLeftBrPos <= nRightBrPos - state->nCharacterPosition) )
+              )
+      {
+        out_cr->cpMin = nLeftBrPos;
+        out_cr->cpMax = nLeftBrPos;
+      }
+      else
+      {
+        out_cr->cpMin = nRightBrPos;
+        out_cr->cpMax = nRightBrPos;
+      }
+    }
+
+    return TRUE;
+  }
+
+  // no pair found
+  NearestBracketsIndexes[0] = -1;
+  NearestBracketsIndexes[1] = -1;
+  NearestBracketsIndexes[2] = tbtNone;
+  
+  return FALSE;
+}
+
+static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosition, CHARRANGE_X* out_cr)
+{
+  INT_X nStartPos;
+  tGetNearestBracketsState state;
+  tGetHighlightIndexesCookie brCookie;
+
+  if ( NearestBr_MatchCachedIndexes(action, nCharacterPosition, out_cr) )
+    return TRUE;
+
+  // Note:
+  // Now we can not use the cached values of NearestBracketsIndexes
+  // because there can be several embedded bracket pairs within the
+  // same range, e.g.:
+  //   {  (  [  ]  ) | }
+  // In such situation, the actual nearest brackets pair depends on
+  // the caret position, e.g.:
+  //   {  (  [  ] | )  }
+  //   {  (  [ | ]  )  }
+  NearestBracketsIndexes[0] = -1;
+  NearestBracketsIndexes[1] = -1;
+  NearestBracketsIndexes[2] = tbtNone;
+
+  state.nCharacterPosition = nCharacterPosition;
+  state.nTextLength = (INT_X) SendMessage(g_hMainWnd, AKD_GETTEXTLENGTH, (WPARAM) hActualEditWnd, 0);
+  state.nLeftBrPos = -1;
+  state.nRightBrPos = -1;
+  state.nLeftBrType = tbtNone;
+  state.nRightBrType = tbtNone;
+  state.nLeftDupDirection = DP_NONE;
+  state.nRightDupDirection = DP_NONE;
+  OccurrencesData_Init(&state.occData, state.occItems, XBR_NEARESTBR_OCC_ITEMS);
+
+  nStartPos = nCharacterPosition;
+  {
+    int  nBrType;
+    int  nDupDir;
+    unsigned int nAtBr;
+
+    nAtBr = NearestBr_IsAtBracketCharacter(nCharacterPosition, state.nTextLength, &nBrType, &nDupDir);
+    if ( nAtBr & abcLeftBr )
+    {
+      // at left bracket...
+      if ( nAtBr & abcBrIsOnRight )
+        ++nStartPos; //  |(  ->  (|
+      state.nLeftBrPos = nStartPos; // exclude the bracket itself
+      state.nLeftBrType = nBrType;
+      state.nLeftDupDirection = nDupDir;
+      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
+      NearestBr_FindRightBracket(nStartPos, &state, &brCookie);
+    }
+    else if ( nAtBr & abcRightBr )
+    {
+      // at right bracket...
+      if ( nAtBr & abcBrIsOnLeft )
+        --nStartPos; //  )|  ->  |)
+      state.nRightBrPos = nStartPos;
+      state.nRightBrType = nBrType;
+      state.nRightDupDirection = nDupDir;
+      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
+      NearestBr_FindLeftBracket(nStartPos, &state, &brCookie);
+      NearestBr_AdjustLeftBracketPos(&state);
+    }
+    else if ( nAtBr & abcDetectBr )
+    {
+      unsigned int nAtBrNow;
+
+      // detect: either at left or at right bracket
+      // 1. try as a left bracket...
+      nAtBrNow = nAtBr;
+      if ( nAtBr & abcBrIsOnRight )
+      {
+        ++nStartPos; //  |(  ->  (|
+        nAtBrNow = abcDetectBr | abcBrIsOnLeft;
+      }
+      state.nLeftBrPos = nStartPos; // exclude the bracket itself
+      state.nLeftBrType = nBrType;
+      state.nLeftDupDirection = nDupDir;
+      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie);
+      NearestBr_FindRightBracket(nStartPos, &state, &brCookie);
+      if ( brCookie.nResult == ghlrNone && state.nRightBrType != state.nLeftBrType )
+      {
+        state.nLeftBrPos = -1;
+        state.nLeftBrType = tbtNone;
+        state.nLeftDupDirection = DP_NONE;
+
+        // 2. try as a right bracket...
+        nAtBrNow = nAtBr;
+        if ( nAtBr & abcBrIsOnLeft )
+        {
+          --nStartPos; //  )|  ->  |)
+          nAtBrNow = abcDetectBr | abcBrIsOnRight;
+        }
+        state.nRightBrPos = nStartPos;
+        state.nRightBrType = nBrType;
+        state.nRightDupDirection = nDupDir;
+        NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie);
+        NearestBr_FindLeftBracket(nStartPos, &state, &brCookie);
+        NearestBr_AdjustLeftBracketPos(&state);
+      }
+    }
+    else
+    {
+      // not at a bracket
+      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
+      NearestBr_FindLeftBracket(nStartPos, &state, &brCookie);
+      NearestBr_AdjustLeftBracketPos(&state);
+      if ( state.nLeftBrType != tbtNone )
+      {
+        NearestBr_FindRightBracket(nStartPos, &state, &brCookie);
+      }
+    }
+  }
+
+  if ( (brCookie.nResult == ghlrPair) &&
+       (state.nRightBrType == tbtNone || state.nRightBrType != state.nLeftBrType ||
+        brCookie.pos2 - brCookie.pos1 < state.nRightBrPos - state.nLeftBrPos)
+     )
+  {
+    state.nLeftBrPos = brCookie.pos1;
+    state.nRightBrPos = brCookie.pos2;
+    state.nLeftBrType = brCookie.nBracketType;    
+    state.nRightBrType = brCookie.nBracketType;
+    state.nLeftDupDirection = DP_NONE;
+    state.nRightDupDirection = DP_NONE;
+
+    if ( brCookie.pos1 == nStartPos + 1 )
+      ++nStartPos; //  |(  ->  (|
+    else if ( brCookie.pos2 + 1 == nStartPos )
+      --nStartPos; //  )|  ->  |)
+  }
+
+  return NearestBr_ApplyStateToRange(action, nStartPos, &state, out_cr);
+}
+
+void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPosition)
+{
+  CHARRANGE_X cr;
+
+  updateActualState(hEditWnd);
+
+  if ( GetNearestBracketsRange(action, nCharacterPosition, &cr) )
+  {
+    SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) &cr);
+  }
+}
+
+/*static*/ BOOL GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex,
                                     const INT_X nCharacterPosition, const CHARRANGE_X* pSelection)
 {
   int   nBracketType;
@@ -2233,7 +3659,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
             else
             {
               cookieHL.nBracketType = -1;
-              GetHighlightDataFromAkelEdit(ind1, &cookieHL);
+              GetHighlightDataFromAkelEdit(ind1, &cookieHL, GetAkelEditHighlightCallback);
               cookieHL.chd.dwState |= GetInSelectionState(ind1, pSelection);
               CharacterInfo_Add(hgltCharacterInfo, ind1, &cookieHL.chd);
               CharacterHighlightData_Copy(pchd, &cookieHL.chd);
@@ -2251,7 +3677,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
             else
             {
               cookieHL.nBracketType = -1;
-              GetHighlightDataFromAkelEdit(ind2, &cookieHL);
+              GetHighlightDataFromAkelEdit(ind2, &cookieHL, GetAkelEditHighlightCallback);
               cookieHL.chd.dwState |= GetInSelectionState(ind2, pSelection);
               CharacterInfo_Add(hgltCharacterInfo, ind2, &cookieHL.chd);
               CharacterHighlightData_Copy(pchd, &cookieHL.chd);
@@ -2269,7 +3695,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
             else
             {
               cookieHL.nBracketType = -1;
-              GetHighlightDataFromAkelEdit(ind3, &cookieHL);
+              GetHighlightDataFromAkelEdit(ind3, &cookieHL, GetAkelEditHighlightCallback);
               cookieHL.chd.dwState |= GetInSelectionState(ind3, pSelection);
               CharacterInfo_Add(hgltCharacterInfo, ind3, &cookieHL.chd);
               CharacterHighlightData_Copy(pchd, &cookieHL.chd);
@@ -2282,15 +3708,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     }
   }
 
-  if (g_bOldWindows)
-  {
-    char ch = AnyRichEdit_GetCharAt(hActualEditWnd, nCharacterPosition);
-    wch = char2wchar(ch);
-  }
-  else
-  {
-    wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nCharacterPosition);
-  }
+  wch = getCharAt(hActualEditWnd, nCharacterPosition);
 
   nDuplicatedPairDirection = DP_NONE;
   nDuplicatedPairDirectionPotential = DP_NONE;
@@ -2332,7 +3750,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
       return FALSE; // nothing to do
 
     // check for duplicated pair (e.g. "" quotes)
-    if (getBracketsPairW(nBracketType)[0] == getBracketsPairW(nBracketType)[1])
+    if (isDuplicatedPair(nBracketType))
     {
       if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES] == 0)
         return FALSE;
@@ -2368,8 +3786,8 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
       return FALSE;
   }
 
-  if ((nBracketType != tbtNone) && 
-      bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) && 
+  if ((nBracketType != tbtNone) &&
+      bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) &&
       (nCharacterPosition > 0))
   {
     wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
@@ -2445,8 +3863,8 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
     if (nDuplicatedPairDirection != DP_NONE)
     {
-      int maxLines = isDirectionDetecting(nDuplicatedPairDirection) ? 
-        g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] : 
+      int maxLines = isDirectionDetecting(nDuplicatedPairDirection) ?
+        g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] :
           g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES];
 
       if (nMaxLine[0] > nLine + maxLines - 1)
@@ -2490,47 +3908,29 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
     bFound = FALSE;
     bComment = FALSE;
 
-    while ( bRightBracket ? (nLine >= nMinLine[nSearchDirection]) : (nLine <= nMaxLine[nSearchDirection]) )
+    if ( (NearestBracketsIndexes[2] != tbtTagInv) &&
+         (nCharacterPosition == NearestBracketsIndexes[0] ||
+          nCharacterPosition == NearestBracketsIndexes[1]) )
     {
+      if (nCharacterPosition == NearestBracketsIndexes[0])
+        i = NearestBracketsIndexes[1];
+      else
+        i = NearestBracketsIndexes[0];
       if (g_bAkelEdit)
       {
-        if (ci.lpLine)
-        {
-          ci.lpLine = bRightBracket ? ci.lpLine->prev : ci.lpLine->next;
-        }
-        else
-        {
-          SendMessage( hActualEditWnd, AEM_GETINDEX, AEGI_CARETCHAR, (LPARAM)&ci );
-          if (ci.nLine != nLine)
-          {
-            if (ci.lpLine && (ci.nLine + 1 == nLine))
-            {
-              if ((ci.nCharInLine == ci.lpLine->nLineLen) && 
-                  (ci.lpLine->nLineBreak == AELB_WRAP))
-              {
-                // a hack: don't process a position at the line-wrap
-                break;
-              }
-            }
-
-            SendMessage( hActualEditWnd, AEM_GETINDEX, AEGI_FIRSTSELCHAR, (LPARAM)&ci );
-            if (ci.nLine != nLine)
-              SendMessage( hActualEditWnd, AEM_GETINDEX, AEGI_LASTSELCHAR, (LPARAM)&ci );
-          }
-        }
-
-        if (ci.lpLine)
-        {
-          pcwszLine = ci.lpLine->wpLine;
-          nLen = ci.lpLine->nLineLen;
-        }
-        else
-          break;
+        SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) i, (LPARAM) &ci);
+        pcwszLine = ci.lpLine->wpLine;
+        nLen = ci.lpLine->nLineLen;
+        nLine = ci.nLine;
+        i = ci.nCharInLine; // pos in line
       }
       else
       {
+        pcwszLine = wszLine;
         if (g_bOldWindows)
         {
+          nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, i);
+          i -= AnyRichEdit_LineIndex(hActualEditWnd, nLine); // pos in line
           nLen = AnyRichEdit_GetLine(hActualEditWnd, nLine, szLine, 0x10000-1);
           // CAnyRichEdit::GetLine sets szLine[nLen] = 0
           MultiByteToWideChar(CP_ACP, 0, szLine, nLen, wszLine, nLen);
@@ -2538,307 +3938,367 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         }
         else
         {
+          nLine = AnyRichEdit_ExLineFromCharW(hActualEditWnd, i);
+          i -= AnyRichEdit_LineIndexW(hActualEditWnd, nLine); // pos in line
           nLen = AnyRichEdit_GetLineW(hActualEditWnd, nLine, wszLine, 0x10000-1);
           // AnyRichEdit_GetLineW sets szLineW[nLen] = 0
         }
       }
-
-      if ( bBracketsSkipComment1 && (nCurrentFileType2 & tfmComment1) )
+      wch = wchOK;
+      bFound = TRUE;
+    }
+    else
+    {
+      while ( bRightBracket ? (nLine >= nMinLine[nSearchDirection]) : (nLine <= nMaxLine[nSearchDirection]) )
       {
-        int i;
-
-        // pre-processing current line
-        for (i = 0; i < nLen; i++)
+        if (g_bAkelEdit)
         {
-          wch = pcwszLine[i];
-          if (wch == L'/')
+          if (ci.lpLine)
           {
-            if ((i+1 < nLen) && (pcwszLine[i+1] == L'/'))
-            {
-              // this is "//" comment
-              if ((i == 0) || (pcwszLine[i-1] != L':')) // not "://"
-              {
-                //wszLine[i] = 0;
-                nLen = i;
-                bComment = TRUE;
-                break;
-              }
-            }
-          }
-        }
-
-      }
-
-      i = bRightBracket ? (nLen - 1) : 0;
-      if (nStartLine == nLine)
-      {
-        INT_X nLinePosition;
-
-        if (g_bOldWindows)
-          nLinePosition = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
-        else
-          nLinePosition = AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
-
-        nLinePosition = nCharacterPosition - nLinePosition;
-
-        if (bComment) // start line contains a comment...
-        {
-          if (nLinePosition >= nLen) // ...and current bracket is commented
-          {
-            //MessageBoxA(NULL,"break","for ( ... nLine ... )",MB_OK);
-            break; // break outside the cycle for nLine
-          }
-        }
-
-        i = bRightBracket ? (nLinePosition - 1) : (nLinePosition + 1);
-
-        if (nDuplicatedPairDirection != DP_NONE)
-        {
-          nDuplicatedPairDirectionPotential = DP_NONE;
-          if (!containsSymbolToTheRight(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, nLinePosition + 1, nLen))
-            nDuplicatedPairDirectionPotential = DP_BACKWARD;
-
-          if ((nDuplicatedPairDirectionPotential == DP_NONE) || !bRightBracket)
-          {
-            if (!containsSymbolToTheLeft(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, nLinePosition - 1))
-              nDuplicatedPairDirectionPotential = DP_FORWARD;
-          }
-        }
-      }
-
-      while ( bRightBracket ? (i >= 0) : (i < nLen) )
-      {
-        wch = pcwszLine[i];
-        if (wch == wchOK)
-        {
-          if (!isEscapedCharacterW(i, pcwszLine))
-            --nFailReferences;
-
-          if (nFailReferences < 0)
-          {
-            bFound = TRUE;
-            break;
-          }
-        }
-        else if (wch == wchFail)
-        {
-          if (!isEscapedCharacterW(i, pcwszLine))
-            ++nFailReferences;
-        }
-
-        if (bRightBracket)
-          --i;
-        else
-          ++i;
-      }
-
-      if (bFound)
-      {
-        INT_X pos1;
-        int   nDirection2;
-        int   rank;
-
-        if (nDuplicatedPairDirection == DP_NONE)
-        {
-          // not duplicated: the pair bracket is found definitely
-          break;
-        }
-
-        if (g_bOldWindows)
-          pos1 = i + AnyRichEdit_LineIndex(hActualEditWnd, nLine);
-        else
-          pos1 = i + AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
-
-        // Here is how it works:
-        // 1. bFound=TRUE means:
-        //      the pair bracket or quote has been found.
-        // 2. invoking "break;" alone means:
-        //      everything is OK, so accept the search result, stop.
-        // 3. invoking "bFound = FALSE; break;" means:
-        //      reject the search results, stop.
-        // 4. when bRightBracket=TRUE, invoking "nSearchDirection = 1;" _without_ further "break;" means:
-        //      the searching backward is done, let's initiate searching forward.
-        if (bRightBracket)
-        {
-          nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
-          rank = getDirectionRank(nDirection2, nDuplicatedPairDirection);
-
-          if (rank >= getDirectionRank(DP_MAYBEFORWARD, DP_BACKWARD))
-            break; // definitely found: (?-> <--) or (--> <-?) or (--> <--)
-
-          if (rank >= getDirectionRank(DP_DETECT, DP_BACKWARD))
-          {
-            // when search direction is known, let's assume
-            // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
-            if (nStartLine - nLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
-              break;
-
-            i_saved = i;
-            nLine_saved = nLine;
-            rank_saved = rank;
-
-            // let's try searching forward...
-            nSearchDirection = 1;
-          }
-          else if (rank >= getDirectionRank(DP_BACKWARD, DP_BACKWARD))
-          {
-            if (nStartLine - nLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
-            {
-              if ((nDuplicatedPairDirectionPotential == DP_BACKWARD) || 
-                  (!containsSymbolToTheLeft(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, i - 1)))
-              {
-                i_saved = i;
-                nLine_saved = nLine;
-                rank_saved = rank;
-              }
-            }
-
-            // let's try searching forward...
-            nSearchDirection = 1;
+            ci.lpLine = bRightBracket ? ci.lpLine->prev : ci.lpLine->next;
           }
           else
           {
-            if (isDirectionDetecting(nDuplicatedPairDirection))
+            SendMessage( hActualEditWnd, AEM_GETINDEX, AEGI_CARETCHAR, (LPARAM)&ci );
+            if (ci.nLine != nLine)
             {
+              if (ci.lpLine && (ci.nLine + 1 == nLine))
+              {
+                if ((ci.nCharInLine == ci.lpLine->nLineLen) &&
+                    (ci.lpLine->nLineBreak == AELB_WRAP))
+                {
+                  // a hack: don't process a position at the line-wrap
+                  break;
+                }
+              }
+
+              SendMessage( hActualEditWnd, AEM_GETINDEX, AEGI_FIRSTSELCHAR, (LPARAM)&ci );
+              if (ci.nLine != nLine)
+                SendMessage( hActualEditWnd, AEM_GETINDEX, AEGI_LASTSELCHAR, (LPARAM)&ci );
+            }
+          }
+
+          if (ci.lpLine)
+          {
+            pcwszLine = ci.lpLine->wpLine;
+            nLen = ci.lpLine->nLineLen;
+          }
+          else
+            break;
+        }
+        else
+        {
+          if (g_bOldWindows)
+          {
+            nLen = AnyRichEdit_GetLine(hActualEditWnd, nLine, szLine, 0x10000-1);
+            // CAnyRichEdit::GetLine sets szLine[nLen] = 0
+            MultiByteToWideChar(CP_ACP, 0, szLine, nLen, wszLine, nLen);
+            wszLine[nLen] = 0;
+          }
+          else
+          {
+            nLen = AnyRichEdit_GetLineW(hActualEditWnd, nLine, wszLine, 0x10000-1);
+            // AnyRichEdit_GetLineW sets szLineW[nLen] = 0
+          }
+        }
+
+        if ( bBracketsSkipComment1 && (nCurrentFileType2 & tfmComment1) )
+        {
+          int i;
+
+          // pre-processing current line
+          for (i = 0; i < nLen; i++)
+          {
+            wch = pcwszLine[i];
+            if (wch == L'/')
+            {
+              if ((i+1 < nLen) && (pcwszLine[i+1] == L'/'))
+              {
+                // this is "//" comment
+                if ((i == 0) || (pcwszLine[i-1] != L':')) // not "://"
+                {
+                  //wszLine[i] = 0;
+                  nLen = i;
+                  bComment = TRUE;
+                  break;
+                }
+              }
+            }
+          }
+
+        }
+
+        i = bRightBracket ? (nLen - 1) : 0;
+        if (nStartLine == nLine)
+        {
+          INT_X nLinePosition;
+
+          if (g_bOldWindows)
+            nLinePosition = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
+          else
+            nLinePosition = AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
+
+          nLinePosition = nCharacterPosition - nLinePosition;
+
+          if (bComment) // start line contains a comment...
+          {
+            if (nLinePosition >= nLen) // ...and current bracket is commented
+            {
+              //MessageBoxA(NULL,"break","for ( ... nLine ... )",MB_OK);
+              break; // break outside the cycle for nLine
+            }
+          }
+
+          i = bRightBracket ? (nLinePosition - 1) : (nLinePosition + 1);
+
+          if (nDuplicatedPairDirection != DP_NONE)
+          {
+            nDuplicatedPairDirectionPotential = DP_NONE;
+            if (!containsSymbolToTheRight(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, nLinePosition + 1, nLen))
+              nDuplicatedPairDirectionPotential = DP_BACKWARD;
+
+            if ((nDuplicatedPairDirectionPotential == DP_NONE) || !bRightBracket)
+            {
+              if (!containsSymbolToTheLeft(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, nLinePosition - 1))
+                nDuplicatedPairDirectionPotential = DP_FORWARD;
+            }
+          }
+        }
+
+        while ( bRightBracket ? (i >= 0) : (i < nLen) )
+        {
+          wch = pcwszLine[i];
+          if (wch == wchOK)
+          {
+            if (!isEscapedCharacterW(i, pcwszLine))
+              --nFailReferences;
+
+            if (nFailReferences < 0)
+            {
+              bFound = TRUE;
+              break;
+            }
+          }
+          else if (wch == wchFail)
+          {
+            if (!isEscapedCharacterW(i, pcwszLine))
+              ++nFailReferences;
+          }
+
+          if (bRightBracket)
+            --i;
+          else
+            ++i;
+        }
+
+        if (bFound)
+        {
+          INT_X pos1;
+          int   nDirection2;
+          int   rank;
+
+          if (nDuplicatedPairDirection == DP_NONE)
+          {
+            // not duplicated: the pair bracket is found definitely
+            break;
+          }
+
+          if (g_bOldWindows)
+            pos1 = i + AnyRichEdit_LineIndex(hActualEditWnd, nLine);
+          else
+            pos1 = i + AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
+
+          // Here is how it works:
+          // 1. bFound=TRUE means:
+          //      the pair bracket or quote has been found.
+          // 2. invoking "break;" alone means:
+          //      everything is OK, so accept the search result, stop.
+          // 3. invoking "bFound = FALSE; break;" means:
+          //      reject the search results, stop.
+          // 4. when bRightBracket=TRUE, invoking "nSearchDirection = 1;" _without_ further "break;" means:
+          //      the searching backward is done, let's initiate searching forward.
+          if (bRightBracket)
+          {
+            nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
+            rank = getDirectionRank(nDirection2, nDuplicatedPairDirection);
+
+            if (rank >= getDirectionRank(DP_MAYBEFORWARD, DP_BACKWARD))
+              break; // definitely found: (?-> <--) or (--> <-?) or (--> <--)
+
+            if (rank >= getDirectionRank(DP_DETECT, DP_BACKWARD))
+            {
+              // when search direction is known, let's assume
+              // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
+              if (nStartLine - nLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+                break;
+
+              i_saved = i;
+              nLine_saved = nLine;
+              rank_saved = rank;
+
+              // let's try searching forward...
+              nSearchDirection = 1;
+            }
+            else if (rank >= getDirectionRank(DP_BACKWARD, DP_BACKWARD))
+            {
+              if (nStartLine - nLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+              {
+                if ((nDuplicatedPairDirectionPotential == DP_BACKWARD) ||
+                    (!containsSymbolToTheLeft(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, i - 1)))
+                {
+                  i_saved = i;
+                  nLine_saved = nLine;
+                  rank_saved = rank;
+                }
+              }
+
               // let's try searching forward...
               nSearchDirection = 1;
             }
             else
             {
-              // backward assumption failed, stop searching
-              bFound = FALSE;
-              break;
-            }
-          }
-        }
-        else
-        {
-          nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
-          rank = getDirectionRank(nDuplicatedPairDirection, nDirection2);
-
-          if (rank >= getDirectionRank(DP_FORWARD, DP_MAYBEBACKWARD))
-            break; // definitely found: (--> <-?) or (?-> <--) or (--> <--)
-
-          if (rank >= getDirectionRank(DP_FORWARD, DP_DETECT))
-          {
-            // when search direction is known, let's assume
-            // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
-            if (nLine - nStartLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
-              break;
-
-            if (i_saved != -1)
-            {
-              // conflict: the pair found in both directions
-              if (rank_saved > rank)
+              if (isDirectionDetecting(nDuplicatedPairDirection))
               {
-                i = i_saved;
-                nLine = nLine_saved;
+                // let's try searching forward...
+                nSearchDirection = 1;
               }
-              else if (rank_saved == rank)
+              else
               {
-                i_saved = -1;
+                // backward assumption failed, stop searching
                 bFound = FALSE;
-              }
-              // else accept current pair
-            }
-            break;
-          }
-          else if (rank >= getDirectionRank(DP_FORWARD, DP_FORWARD))
-          {
-            if (nLine - nStartLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
-            {
-              if ((nDuplicatedPairDirectionPotential == DP_FORWARD) ||
-                  (!containsSymbolToTheRight(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, i + 1, nLen)))
-              {
-                if (i_saved != -1)
-                {
-                  // conflict: the pair found in both directions
-                  if (rank_saved > rank)
-                  {
-                    i = i_saved;
-                    nLine = nLine_saved;
-                  }
-                  else if (rank_saved == rank)
-                  {
-                    i_saved = -1;
-                    bFound = FALSE;
-                  }
-                  // else accept current pair
-                }
                 break;
               }
             }
           }
-
-          bFound = FALSE; // searching forward failed
-          break;
-        }
-      }
-
-      if (bRightBracket)
-      {
-        if ((nSearchDirection == 1) ||
-            (isDirectionDetecting(nDuplicatedPairDirection) && (nLine == nMinLine[0])))
-        {
-          if (g_bAkelEdit && (nSearchDirection == 0) &&
-              ci.lpLine->prev && (ci.lpLine->prev->nLineBreak == AELB_WRAP))
-          {
-            --nLine; // go to previous line
-            ++nWrappedLines;
-            if (nMinLine[nSearchDirection] != 0)
-              --nMinLine[nSearchDirection];
-          }
           else
           {
-            nSearchDirection = 1;
-            bRightBracket = FALSE;
-            bFound = FALSE;
-            bComment = FALSE;
-            nLine = nStartLine;
-            nWrappedLines = 0;
-            nFailReferences = 0;
+            nDirection2 = getDuplicatedPairDirection(pos1, wchOK);
+            rank = getDirectionRank(nDuplicatedPairDirection, nDirection2);
 
-            ci.lpLine = NULL;
-            if (!g_bAkelEdit)
-              pcwszLine = wszLine;
+            if (rank >= getDirectionRank(DP_FORWARD, DP_MAYBEBACKWARD))
+              break; // definitely found: (--> <-?) or (?-> <--) or (--> <--)
+
+            if (rank >= getDirectionRank(DP_FORWARD, DP_DETECT))
+            {
+              // when search direction is known, let's assume
+              // the result is OK within g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES]
+              if (nLine - nStartLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+                break;
+
+              if (i_saved != -1)
+              {
+                // conflict: the pair found in both directions
+                if (rank_saved > rank)
+                {
+                  i = i_saved;
+                  nLine = nLine_saved;
+                }
+                else if (rank_saved == rank)
+                {
+                  i_saved = -1;
+                  bFound = FALSE;
+                }
+                // else accept current pair
+              }
+              break;
+            }
+            else if (rank >= getDirectionRank(DP_FORWARD, DP_FORWARD))
+            {
+              if (nLine - nStartLine < nWrappedLines + (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES])
+              {
+                if ((nDuplicatedPairDirectionPotential == DP_FORWARD) ||
+                    (!containsSymbolToTheRight(g_bAkelEdit ? ci.lpLine : (AELINEDATA *)pcwszLine, wchOK, i + 1, nLen)))
+                {
+                  if (i_saved != -1)
+                  {
+                    // conflict: the pair found in both directions
+                    if (rank_saved > rank)
+                    {
+                      i = i_saved;
+                      nLine = nLine_saved;
+                    }
+                    else if (rank_saved == rank)
+                    {
+                      i_saved = -1;
+                      bFound = FALSE;
+                    }
+                    // else accept current pair
+                  }
+                  break;
+                }
+              }
+            }
+
+            bFound = FALSE; // searching forward failed
+            break;
           }
         }
-        else
+
+        if (bRightBracket)
         {
-          --nLine; // go to previous line
-          if (g_bAkelEdit)
+          if ((nSearchDirection == 1) ||
+              (isDirectionDetecting(nDuplicatedPairDirection) && (nLine == nMinLine[0])))
           {
-            if (ci.lpLine->prev && (ci.lpLine->prev->nLineBreak == AELB_WRAP))
+            if (g_bAkelEdit && (nSearchDirection == 0) &&
+                ci.lpLine->prev && (ci.lpLine->prev->nLineBreak == AELB_WRAP))
             {
+              --nLine; // go to previous line
               ++nWrappedLines;
               if (nMinLine[nSearchDirection] != 0)
                 --nMinLine[nSearchDirection];
             }
-          }
-        }
-      }
-      else
-      {
-        ++nLine; // go to next line
-        if (g_bAkelEdit)
-        {
-          if (ci.lpLine->nLineBreak == AELB_WRAP)
-          {
-            ++nWrappedLines;
-            ++nMaxLine[nSearchDirection];
-          }
-        }
-      }
-    }
+            else
+            {
+              nSearchDirection = 1;
+              bRightBracket = FALSE;
+              bFound = FALSE;
+              bComment = FALSE;
+              nLine = nStartLine;
+              nWrappedLines = 0;
+              nFailReferences = 0;
 
-    if (!bFound)
-    {
-      if ((nSearchDirection == 1) && (i_saved != -1))
+              ci.lpLine = NULL;
+              if (!g_bAkelEdit)
+                pcwszLine = wszLine;
+            }
+          }
+          else
+          {
+            --nLine; // go to previous line
+            if (g_bAkelEdit)
+            {
+              if (ci.lpLine->prev && (ci.lpLine->prev->nLineBreak == AELB_WRAP))
+              {
+                ++nWrappedLines;
+                if (nMinLine[nSearchDirection] != 0)
+                  --nMinLine[nSearchDirection];
+              }
+            }
+          }
+        }
+        else
+        {
+          ++nLine; // go to next line
+          if (g_bAkelEdit)
+          {
+            if (ci.lpLine->nLineBreak == AELB_WRAP)
+            {
+              ++nWrappedLines;
+              ++nMaxLine[nSearchDirection];
+            }
+          }
+        }
+      }
+
+      if (!bFound)
       {
-        i = i_saved;
-        nLine = nLine_saved;
-        wch = wchOK;
-        bFound = TRUE;
+        if ((nSearchDirection == 1) && (i_saved != -1))
+        {
+          i = i_saved;
+          nLine = nLine_saved;
+          wch = wchOK;
+          bFound = TRUE;
+        }
       }
     }
 
@@ -2851,15 +4311,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         {
           if (nCharacterPosition > 0)
           {
-            if (g_bOldWindows)
-            {
-              char ch = AnyRichEdit_GetCharAt(hActualEditWnd, nCharacterPosition-1);
-              prev_wch = char2wchar(ch);
-            }
-            else
-            {
-              prev_wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nCharacterPosition-1);
-            }
+            prev_wch = getCharAt(hActualEditWnd, nCharacterPosition-1);
           }
         }
         else
@@ -2904,7 +4356,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
             else
             {
               cookieHL.nBracketType = -1;
-              GetHighlightDataFromAkelEdit(i, &cookieHL);
+              GetHighlightDataFromAkelEdit(i, &cookieHL, GetAkelEditHighlightCallback);
               cookieHL.chd.dwState |= GetInSelectionState(i, pSelection);
               CharacterInfo_Add(hgltCharacterInfo, i, &cookieHL.chd);
             }
@@ -2940,7 +4392,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
             {
               bReadyHL = TRUE;
               cookieHL.nBracketType = -1;
-              GetHighlightDataFromAkelEdit(i, &cookieHL);
+              GetHighlightDataFromAkelEdit(i, &cookieHL, GetAkelEditHighlightCallback);
               cookieHL.chd.dwState |= GetInSelectionState(i, pSelection);
               CharacterInfo_Add(hgltCharacterInfo, i, &cookieHL.chd);
             }
@@ -2956,7 +4408,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
               {
                 bReadyHL = TRUE;
                 cookieHL.nBracketType = -1;
-                GetHighlightDataFromAkelEdit(i1, &cookieHL);
+                GetHighlightDataFromAkelEdit(i1, &cookieHL, GetAkelEditHighlightCallback);
                 cookieHL.chd.dwState |= GetInSelectionState(i1, pSelection);
               }
               CharacterInfo_Add(hgltCharacterInfo, i1, &cookieHL.chd);
@@ -3020,7 +4472,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   }
 }
 
-static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags, 
+static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
                        BYTE* plfItalic, LONG* plfWeight)
 {
   switch (dwFontStyle)
@@ -3501,6 +4953,10 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   CurrentBracketsIndexes[0] = -1;
   CurrentBracketsIndexes[1] = -1;
 
+  NearestBracketsIndexes[0] = -1;
+  NearestBracketsIndexes[1] = -1;
+  NearestBracketsIndexes[2] = tbtNone;
+
   if (g_bAkelEdit)
   {
     CharacterInfo_ClearAll(hgltCharacterInfo);
@@ -3563,6 +5019,47 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
     ++k;
   }
   return (k % 2) ? TRUE : FALSE;
+}
+
+/*static*/ BOOL isEscapedPrefixA(const char* strA, int len)
+{
+  int k = 0;
+  while ((len > 0) && (strA[--len] == '\\'))
+  {
+    ++k;
+  }
+  return (k % 2) ? TRUE : FALSE;
+}
+
+/*static*/ BOOL isEscapedPosW(const INT_X nOffset)
+{
+  INT_X pos;
+  int len;
+  wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
+
+  getEscapedPrefixPos(nOffset, &pos, &len);
+  len = (int) AnyRichEdit_GetTextAtW(hActualEditWnd, pos, len, szPrefixW);
+  return isEscapedPrefixW(szPrefixW, len);
+}
+
+/*static*/ BOOL isEscapedPosA(const INT_X nOffset)
+{
+  INT_X pos;
+  int len;
+  char szPrefixA[MAX_ESCAPED_PREFIX + 2];
+
+  getEscapedPrefixPos(nOffset, &pos, &len);
+  len = (int) AnyRichEdit_GetTextAt(hActualEditWnd, pos, len, szPrefixA);
+  return isEscapedPrefixA(szPrefixA, len);
+}
+
+/*static*/ BOOL isEscapedPosEx(const INT_X nOffset)
+{
+  if ( bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) )
+  {
+    return (g_bOldWindows ? isEscapedPosA(nOffset) : isEscapedPosW(nOffset));
+  }
+  return FALSE;
 }
 
 /*static*/ BOOL isEscapedCharacterW(const INT_X pos, const wchar_t* pcwszLine)
@@ -3672,7 +5169,7 @@ static int wstr_unsafe_subcmp(const wchar_t* wstr, const wchar_t* wsubstr)
   return (*wsubstr) ? (*wstr - *wsubstr) : 0;
 }
 
-static BOOL wstr_is_listed_ext(const wchar_t* szExtW, 
+static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
   wchar_t* szExtListW, char* szExtListA)
 {
   if ( szExtW && szExtW[0] )
@@ -3913,6 +5410,10 @@ void AutoBrackets_Uninitialize(void)
   }
   CurrentBracketsIndexes[0] = -1;
   CurrentBracketsIndexes[1] = -1;
+
+  NearestBracketsIndexes[0] = -1;
+  NearestBracketsIndexes[1] = -1;
+  NearestBracketsIndexes[2] = tbtNone;
 }
 
 static void copyUniqueCharsOkW(tStringWrapperW* pDst, const wchar_t* pSrc)
@@ -3930,9 +5431,9 @@ static void copyUniqueCharsOkW(tStringWrapperW* pDst, const wchar_t* pSrc)
 
     while ((wch = *pSrc) != 0)
     {
-      if ((wch != L' ') && 
-          (wch != L'\t') && 
-          (wch != L'\x0D') && 
+      if ((wch != L' ') &&
+          (wch != L'\t') &&
+          (wch != L'\x0D') &&
           (wch != L'\x0A'))
       {
         i = 0;

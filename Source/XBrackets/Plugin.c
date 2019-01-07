@@ -153,6 +153,9 @@ static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   "highlight.quote_detect_lines",
   "highlight.quote_max_lines",
   "highlight.br_max_lines",
+  "nearestbr.goto_flags",
+  "nearestbr.selto_flags",
+  "nearestbr.max_lines",
   // other options
   "common.user_brpairs",
   "autobrackets.next_char_ok",
@@ -178,6 +181,9 @@ static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   L"highlight.quote_detect_lines",
   L"highlight.quote_max_lines",
   L"highlight.br_max_lines",
+  L"nearestbr.goto_flags",
+  L"nearestbr.selto_flags",
+  L"nearestbr.max_lines",
   // other options
   L"common.user_brpairs",
   L"autobrackets.next_char_ok",
@@ -398,12 +404,12 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
 
   if (g_bOldWindows)
   {
-    nRet = DialogBoxA(pd->hInstanceDLL, MAKEINTRESOURCEA(IDD_SETTINGS), 
+    nRet = DialogBoxA(pd->hInstanceDLL, MAKEINTRESOURCEA(IDD_SETTINGS),
       pd->hMainWnd, SettingsDlgProc);
   }
   else
   {
-    nRet = DialogBoxW(pd->hInstanceDLL, MAKEINTRESOURCEW(IDD_SETTINGS), 
+    nRet = DialogBoxW(pd->hInstanceDLL, MAKEINTRESOURCEW(IDD_SETTINGS),
       pd->hMainWnd, SettingsDlgProc);
   }
 
@@ -425,11 +431,11 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
     bUpdateBracketsHighlight = TRUE;
   }
 
-  if ((IsBracketsHighlight(prevBracketsHighlight) || bGoToMatchingBracketTriggered) && 
+  if ((IsBracketsHighlight(prevBracketsHighlight) || bGoToMatchingBracketTriggered) &&
       (bUpdateBracketsHighlight || (prevBracketsHighlight != uBracketsHighlight)))
   {
     // 1. brackets were highlighted, now they are not
-    // 2. uBracketsHighlight changed: BRHLF_TEXT or BRHLF_BKGND 
+    // 2. uBracketsHighlight changed: BRHLF_TEXT or BRHLF_BKGND
     RemoveAllHighlightInfo(TRUE);
     bGoToMatchingBracketTriggered = FALSE;
   }
@@ -439,10 +445,14 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
     if (IsBracketsHighlight(uBracketsHighlight))
     {
       bGoToMatchingBracketTriggered = FALSE;
-      if ((prevBracketsHighlight != uBracketsHighlight) || 
+      if ((prevBracketsHighlight != uBracketsHighlight) ||
           (!prevInitialized) || bUpdateBracketsHighlight)
       {
-        MSGINFO msgi = { pd->hWndEdit, WM_PAINT, 0, 0 };
+        MSGINFO msgi;
+        msgi.hWnd = pd->hWndEdit;
+        msgi.uMsg = WM_PAINT;
+        msgi.wParam = 0;
+        msgi.lParam = 0;
 
         OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
       }
@@ -469,12 +479,35 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   pd->nUnload = UD_NONUNLOAD_NONACTIVE;
 }
 
-enum eMatchingBracketAction {
-  MBRA_GOTO = 1,
-  MBRA_SELTO
-};
+static BOOL InvertCaretPositionInTheSelection(const HWND hEditWnd, const CHARRANGE_X* crSel)
+{
+  INT_X nCaretPos;
+  CHARRANGE_X crNewSel;
+  AECHARINDEX ci;
 
-static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
+  if (!g_bAkelEdit)
+    return FALSE;
+
+  SendMessage(hEditWnd, AEM_GETINDEX, AEGI_CARETCHAR, (LPARAM) &ci);
+  nCaretPos = (INT_X) SendMessage(hEditWnd, AEM_INDEXTORICHOFFSET, 0, (LPARAM) &ci);
+  if (nCaretPos == crSel->cpMax)
+  {
+    crNewSel.cpMin = crSel->cpMax;
+    crNewSel.cpMax = crSel->cpMin;
+  }
+  else if (nCaretPos == crSel->cpMin)
+  {
+    crNewSel.cpMin = crSel->cpMin;
+    crNewSel.cpMax = crSel->cpMax;
+  }
+  else
+    return FALSE;
+
+  SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+  return TRUE;
+}
+
+static BOOL DoMatchingBracketAction(const PLUGINDATA *pd, int action)
 {
   if (!g_bInitialized)
   {
@@ -486,7 +519,7 @@ static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
 
   if (g_bInitialized)
   {
-    if ( (!IsBracketsHighlight(uBracketsHighlight)) || 
+    if ( (!IsBracketsHighlight(uBracketsHighlight)) ||
          (bBracketsHighlightVisibleArea && (CurrentBracketsIndexes[0] < 0)) )
     {
       BOOL    prevBracketsHighlightVisibleArea;
@@ -517,22 +550,46 @@ static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
         INT_X pos = -1;
 
         if (cr.cpMin == CurrentBracketsIndexes[0] + 1) // after left bracket
-          pos = CurrentBracketsIndexes[1];
+        {
+          if ( (action == XBRA_SELTO_NEARBR) && (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) )
+          {
+            --cr.cpMin;
+            pos = CurrentBracketsIndexes[1] + 1;
+          }
+          else if ( (action == XBRA_GOTO_NEABR) && (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) )
+            pos = CurrentBracketsIndexes[1] + 1;
+          else
+            pos = CurrentBracketsIndexes[1];
+        }
         else if (cr.cpMin == CurrentBracketsIndexes[1]) // before right bracket
-          pos = CurrentBracketsIndexes[0] + 1;
+        {
+          if ( (action == XBRA_SELTO_NEARBR) && (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) )
+          {
+            ++cr.cpMin;
+            pos = CurrentBracketsIndexes[0];
+          }
+          else if ( (action == XBRA_GOTO_NEABR) && (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) )
+            pos = CurrentBracketsIndexes[0];
+          else
+            pos = CurrentBracketsIndexes[0] + 1;
+        }
         else if (cr.cpMin == CurrentBracketsIndexes[0]) // before left bracket
+        {
           pos = CurrentBracketsIndexes[1] + 1;
+        }
         else if (cr.cpMin == CurrentBracketsIndexes[1] + 1) // after right bracket
+        {
           pos = CurrentBracketsIndexes[0];
+        }
 
         if (pos >= 0)
         {
-          if ( action == MBRA_GOTO )
+          if ( action == XBRA_GOTO || action == XBRA_GOTO_NEABR )
           {
             cr.cpMin = pos;
             cr.cpMax = pos;
           }
-          else if ( action == MBRA_SELTO )
+          else if ( action == XBRA_SELTO || action == XBRA_SELTO_NEARBR )
           {
             /*if ( pos < cr.cpMin )
               cr.cpMin = pos;
@@ -540,10 +597,41 @@ static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
               cr.cpMax = pos;
           }
           SendMessage(pd->hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &cr);
+          return TRUE;
         }
       }
+      else
+        return InvertCaretPositionInTheSelection(pd->hWndEdit, &cr);
     }
   }
+
+  return FALSE;
+}
+
+static BOOL DoNearestBracketsAction(const PLUGINDATA *pd, int action)
+{
+  if (!g_bInitialized)
+  {
+    if ( GetFuncNameOfXBracketsMain(pd) )
+    {
+      PluginCallXBracketsMain(pd->hMainWnd, pd->bOldWindows);
+    }
+  }
+
+  if (g_bInitialized)
+  {
+    CHARRANGE_X cr = { -1, -1 };
+
+    SendMessage(pd->hWndEdit, EM_EXGETSEL_X, 0, (LPARAM) &cr);
+    if (cr.cpMin == cr.cpMax)
+    {
+      OnEditGetNearestBracketsFunc(action, pd->hWndEdit, cr.cpMin);
+    }
+    else
+      return InvertCaretPositionInTheSelection(pd->hWndEdit, &cr);
+  }
+
+  return FALSE;
 }
 
 static BOOL IsExtCallParamValid(LPARAM lParam, int nIndex)
@@ -608,7 +696,7 @@ void __declspec(dllexport) GoToMatchingBracket(PLUGINDATA *pd)
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
 
-  DoMatchingBracketAction(pd, MBRA_GOTO);
+  DoMatchingBracketAction(pd, XBRA_GOTO);
 
   pd->nUnload = UD_NONUNLOAD_NONACTIVE;
 }
@@ -645,7 +733,32 @@ void __declspec(dllexport) SelToMatchingBracket(PLUGINDATA *pd)
   }
 
   if ( isDefaultAction )
-    DoMatchingBracketAction(pd, MBRA_SELTO);
+    DoMatchingBracketAction(pd, XBRA_SELTO);
+
+  pd->nUnload = UD_NONUNLOAD_NONACTIVE;
+}
+
+/*extern "C"*/
+void __declspec(dllexport) GoToNearestBracket(PLUGINDATA *pd)
+{
+  pd->dwSupport |= PDS_NOAUTOLOAD;
+  if ( pd->dwSupport & PDS_GETSUPPORT )
+    return;
+
+  DoNearestBracketsAction(pd, XBRA_GOTO_NEABR);
+
+  pd->nUnload = UD_NONUNLOAD_NONACTIVE;
+}
+
+
+/*extern "C"*/
+void __declspec(dllexport) SelToNearestBrackets(PLUGINDATA *pd)
+{
+  pd->dwSupport |= PDS_NOAUTOLOAD;
+  if ( pd->dwSupport & PDS_GETSUPPORT )
+    return;
+
+  DoNearestBracketsAction(pd, XBRA_SELTO_NEARBR);
 
   pd->nUnload = UD_NONUNLOAD_NONACTIVE;
 }
@@ -657,7 +770,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
   static BOOL bHLSetTheme = FALSE;
 
-  if ((uMsg == AEM_ADDCLONE) || 
+  if ((uMsg == AEM_ADDCLONE) ||
       (uMsg == AEM_DELCLONE) ||
       (uMsg == AEM_HLSETTHEME))
   {
@@ -714,7 +827,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       if (IsBracketsHighlight(uBracketsHighlight) || bGoToMatchingBracketTriggered)
       {
-        // RemoveAllHighlightInfo with bRepaint=FALSE fixes strange bug 
+        // RemoveAllHighlightInfo with bRepaint=FALSE fixes strange bug
         // under MustDie 9x when several MDI windows are repainted
         RemoveAllHighlightInfo(FALSE);
         bGoToMatchingBracketTriggered = FALSE;
@@ -748,7 +861,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     // Rich Edit control
     if (IsBracketsHighlight(uBracketsHighlight) || bGoToMatchingBracketTriggered)
     {
-      if ( (uMsg == WM_CHAR && (/*wParam != VK_DELETE &&*/ wParam != VK_BACK)) || 
+      if ( (uMsg == WM_CHAR && (/*wParam != VK_DELETE &&*/ wParam != VK_BACK)) ||
            (uMsg == WM_KEYDOWN && (wParam == VK_DELETE || wParam == VK_BACK)) ||
            (uMsg == EM_REPLACESEL) ||
            (uMsg == EM_STREAMIN) ||
@@ -896,7 +1009,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     LRESULT lResult = 0;
 
     // before processing the message...
-    if ((uMsg == AKDN_MAIN_ONSTART_PRESHOW) || 
+    if ((uMsg == AKDN_MAIN_ONSTART_PRESHOW) ||
         (uMsg == AKDN_MAIN_ONSTART_SHOW))
     {
       bAkelPadIsStarting = TRUE;
@@ -918,7 +1031,11 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         ei.hWndEdit = NULL;
         if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei) != 0)
         {
-          MSGINFO msgi = { ei.hWndEdit, WM_PAINT, 0, 0 };
+          MSGINFO msgi;
+          msgi.hWnd = ei.hWndEdit;
+          msgi.uMsg = WM_PAINT;
+          msgi.wParam = 0;
+          msgi.lParam = 0;
 
           OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
         }
@@ -1019,6 +1136,8 @@ LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   MSGINFO msgi;
+
+  (hWnd); // unreferenced parameter
 
   if (uMsg == WM_NOTIFY)
   {
@@ -1187,7 +1306,11 @@ void Initialize(PLUGINDATA* pd)
 
     if (IsBracketsHighlight(uBracketsHighlight))
     {
-      MSGINFO msgi = { pd->hWndEdit, WM_PAINT, 0, 0 };
+      MSGINFO msgi;
+      msgi.hWnd = pd->hWndEdit;
+      msgi.uMsg = WM_PAINT;
+      msgi.wParam = 0;
+      msgi.lParam = 0;
 
       OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
     }
@@ -1279,7 +1402,7 @@ static const wchar_t* getOldOptionNameW(const wchar_t* pszNameW)
   return pszNameW;
 }
 
-static BOOL readOptionA(HANDLE hOptions, const char* pszOptionNameA, 
+static BOOL readOptionA(HANDLE hOptions, const char* pszOptionNameA,
                  void* pData, DWORD dwDataSize, DWORD dwOptionType)
 {
   DWORD dwSize;
@@ -1305,7 +1428,7 @@ static BOOL readOptionA(HANDLE hOptions, const char* pszOptionNameA,
   return (dwSize > 0);
 }
 
-static BOOL readOptionW(HANDLE hOptions, const wchar_t* pszOptionNameW, 
+static BOOL readOptionW(HANDLE hOptions, const wchar_t* pszOptionNameW,
                  void* pData, DWORD dwDataSize, DWORD dwOptionType)
 {
   DWORD dwSize;
@@ -1395,8 +1518,8 @@ void ReadOptions(void)
       for (i = 0; i < 2; i++)
       {
         dwValue = OPT_UNDEFINED_DWORD;
-        readOptionBinaryA(hOptions, 
-          cszOptNamesA[(i == 0) ? OPT_HIGHLIGHTRGB : OPT_HIGHLIGHTBKRGB], 
+        readOptionBinaryA(hOptions,
+          cszOptNamesA[(i == 0) ? OPT_HIGHLIGHTRGB : OPT_HIGHLIGHTBKRGB],
             &dwValue, sizeof(DWORD));
         opt_dwHighlightRGB0[i] = dwValue;
         if (opt_dwHighlightRGB0[i] != OPT_UNDEFINED_DWORD)
@@ -1410,20 +1533,20 @@ void ReadOptions(void)
         }
       }
 
-      readOptionBinaryA(hOptions, cszOptNamesA[OPT_CUSTOMRGB], 
+      readOptionBinaryA(hOptions, cszOptNamesA[OPT_CUSTOMRGB],
         g_CustomColoursHighlight, MAX_CUSTOM_COLOURS*sizeof(COLORREF));
 
-      readOptionStrA(hOptions, cszOptNamesA[OPT_HTMLFILEEXTS], 
+      readOptionStrA(hOptions, cszOptNamesA[OPT_HTMLFILEEXTS],
         strHtmlFileExtsA, STR_FILEEXTS_SIZE - 1);
       CharLowerA(strHtmlFileExtsA);
       lstrcpyA( (LPSTR) strHtmlFileExtsW_0, strHtmlFileExtsA );
 
-      readOptionStrA(hOptions, cszOptNamesA[OPT_ESCAPED1FILEEXTS], 
+      readOptionStrA(hOptions, cszOptNamesA[OPT_ESCAPED1FILEEXTS],
         strEscaped1FileExtsA, STR_FILEEXTS_SIZE - 1);
       CharLowerA(strEscaped1FileExtsA);
       lstrcpyA( (LPSTR) strEscaped1FileExtsW_0, strEscaped1FileExtsA );
 
-      readOptionStrA(hOptions, cszOptNamesA[OPT_COMMENT1FILEEXTS], 
+      readOptionStrA(hOptions, cszOptNamesA[OPT_COMMENT1FILEEXTS],
         strComment1FileExtsA, STR_FILEEXTS_SIZE - 1);
       CharLowerA(strComment1FileExtsA);
       lstrcpyA( (LPSTR) strComment1FileExtsW_0, strComment1FileExtsA );
@@ -1431,7 +1554,7 @@ void ReadOptions(void)
       readOptionStrA(hOptions, cszOptNamesA[OPT_COMMON_USER_BRPAIRS],
         (char *) opt_szUserBracketsW_0, MAX_USER_BRACKETS*4 - 1);
 
-      readOptionStrA(hOptions, cszOptNamesA[OPT_AUTOBRACKETS_NEXT_CHAR_OK], 
+      readOptionStrA(hOptions, cszOptNamesA[OPT_AUTOBRACKETS_NEXT_CHAR_OK],
         (char *) opt_szNextCharOkW_0, MAX_PREV_NEXT_CHAR_OK_SIZE - 1);
 
       readOptionStrA(hOptions, cszOptNamesA[OPT_AUTOBRACKETS_PREV_CHAR_OK],
@@ -1479,7 +1602,7 @@ void ReadOptions(void)
         }
       }
 
-      readOptionBinaryW(hOptions, cszOptNamesW[OPT_CUSTOMRGB], 
+      readOptionBinaryW(hOptions, cszOptNamesW[OPT_CUSTOMRGB],
         g_CustomColoursHighlight, MAX_CUSTOM_COLOURS*sizeof(COLORREF));
 
       readOptionStrW(hOptions, cszOptNamesW[OPT_HTMLFILEEXTS],
@@ -1548,13 +1671,13 @@ void ReadOptions(void)
       ((opt_dwOptionsFlags0 & OPTF_DOTAGIF) == OPTF_DOTAGIF);
     bBracketsSkipEscaped1 =
       ((opt_dwOptionsFlags0 & OPTF_SKIPESCAPED1) == OPTF_SKIPESCAPED1);
-    bBracketsSkipComment1 = 
+    bBracketsSkipComment1 =
       ((opt_dwOptionsFlags0 & OPTF_SKIPCOMMENT1) == OPTF_SKIPCOMMENT1);
-    bBracketsHighlightDoubleQuote = 
+    bBracketsHighlightDoubleQuote =
       ((opt_dwOptionsFlags0 & OPTF_HLDOUBLEQUOTE) == OPTF_HLDOUBLEQUOTE);
-    bBracketsHighlightSingleQuote = 
+    bBracketsHighlightSingleQuote =
       ((opt_dwOptionsFlags0 & OPTF_HLSINGLEQUOTE) == OPTF_HLSINGLEQUOTE);
-    bBracketsHighlightTag = 
+    bBracketsHighlightTag =
       ((opt_dwOptionsFlags0 & OPTF_HLTAG) == OPTF_HLTAG);
   }
 
@@ -1563,7 +1686,7 @@ void ReadOptions(void)
     if (g_bOldWindows)
     {
       lstrcpyA(opt_szNextCharOkA, (LPCSTR)opt_szNextCharOkW_0);
-      MultiByteToWideChar(CP_ACP, 0, opt_szNextCharOkA, -1, 
+      MultiByteToWideChar(CP_ACP, 0, opt_szNextCharOkA, -1,
         opt_szNextCharOkW, MAX_PREV_NEXT_CHAR_OK_SIZE - 1);
     }
     else
@@ -1578,7 +1701,7 @@ void ReadOptions(void)
     if (g_bOldWindows)
     {
       lstrcpyA(opt_szPrevCharOkA, (LPCSTR)opt_szPrevCharOkW_0);
-      MultiByteToWideChar(CP_ACP, 0, opt_szPrevCharOkA, -1, 
+      MultiByteToWideChar(CP_ACP, 0, opt_szPrevCharOkA, -1,
         opt_szPrevCharOkW, MAX_PREV_NEXT_CHAR_OK_SIZE - 1);
     }
     else
@@ -1593,7 +1716,7 @@ void ReadOptions(void)
     if (g_bOldWindows)
     {
       lstrcpyA(opt_szUserBracketsA, (LPCSTR)opt_szUserBracketsW_0);
-      MultiByteToWideChar(CP_ACP, 0, opt_szUserBracketsA, -1, 
+      MultiByteToWideChar(CP_ACP, 0, opt_szUserBracketsA, -1,
         opt_szUserBracketsW, MAX_USER_BRACKETS*4 - 1);
     }
     else
@@ -1630,6 +1753,12 @@ void ReadOptions(void)
     g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES] = DEFAULT_MAX_KNOWN_DUPPAIR_LINES;
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_BR_MAX_LINES] == OPT_UNDEFINED_DWORD)
     g_dwOptions[OPT_DWORD_HIGHLIGHT_BR_MAX_LINES] = DEFAULT_MAX_BR_LINES;
+  if (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] = DEFAULT_NEARESTBR_GOTO_FLAGS;
+  if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] = DEFAULT_NEARESTBR_SELTO_FLAGS;
+  if (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] = DEFAULT_NEARESTBR_MAX_LINES;
 
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] > g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES])
   {
@@ -2059,6 +2188,9 @@ BOOL PluginCallXBracketsMain(HWND hMainWnd, BOOL bOldWindows)
 /*extern "C"*/
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
+  (lpvReserved); // unreferenced parameter
+  (hinstDLL); // // unreferenced parameter
+
   if (fdwReason == DLL_PROCESS_ATTACH)
   {
   }

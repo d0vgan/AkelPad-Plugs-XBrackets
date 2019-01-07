@@ -12,6 +12,10 @@
 
 #define DEFAULT_MAX_BR_LINES 0
 
+#define DEFAULT_NEARESTBR_GOTO_FLAGS 0
+#define DEFAULT_NEARESTBR_SELTO_FLAGS 0
+#define DEFAULT_NEARESTBR_MAX_LINES 0
+
 // highlight style flags
 #define XBR_HSF_BOLDFONT      0x0001
 #define XBR_HSF_REDRAWCODER   0x0002
@@ -26,6 +30,20 @@
 #define XBR_GBF_HIGHLIGHTBR  0x0001 // highlight active brackets
 #define XBR_GBF_UPDATEHLDATA 0x0100 // update highlight data of "cached" brackets
 
+// nearbr goto flags
+#define XBR_NBR_GOTO_OUTERPOS     0x0001
+#define XBR_NBR_GOTO_ALWAYSLEFT   0x0010
+#define XBR_NBR_GOTO_ALWAYSRIGHT  0x0020
+
+// nearbr selto flags
+#define XBR_NBR_SELTO_OUTERPOS    0x0001
+
+enum eXBracketsAction {
+  XBRA_GOTO = 1,
+  XBRA_SELTO,
+  XBRA_GOTO_NEABR,
+  XBRA_SELTO_NEARBR
+};
 
 typedef struct sMSGINFO {
   HWND   hWnd;
@@ -45,6 +63,9 @@ void  OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags /* = XBR
 // Highlights active brackets.
 // Mostly this function is called from OnEditGetActiveBrackets.
 void  OnEditHighlightActiveBrackets(void);
+
+// Goes to the nearest bracket/quote or extends the selection to the nearest pair
+void  OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPosition);
 
 // Removes all the "cached" brackets data.
 // Also repaints the brackets when bRepaint=TRUE.
