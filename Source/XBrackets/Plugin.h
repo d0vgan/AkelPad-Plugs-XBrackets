@@ -41,6 +41,8 @@ enum eOptDword {
 };
 
 int  IsBracketsHighlight(UINT uBrHglt);
+BOOL GetFuncNameOfXBracketsMain(const PLUGINDATA *pd);
+BOOL PluginCallXBracketsMain(HWND hMainWnd, BOOL bOldWindows);
 
 void Initialize(PLUGINDATA* pd);
 void Uninitialize(BOOL bIsExiting /* = FALSE */);

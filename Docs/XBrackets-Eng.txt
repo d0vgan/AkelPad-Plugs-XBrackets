@@ -179,6 +179,10 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.6.7 (September 2015)
+ + now Go/SelToMatchingBracket automatically calls XBrackets::Main
+   if it is not already running
+
 v.6.6 (September 2015)
  * AkelPad 4.9.5+
 

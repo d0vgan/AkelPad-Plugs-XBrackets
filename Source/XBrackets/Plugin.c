@@ -374,43 +374,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   prevInitialized = g_bInitialized;
   if (!g_bInitialized)
   {
-
-    if ( pd->bOldWindows )
-    {
-      if ( !((LPCSTR) strPluginFuncMainW)[0] )
-      {
-        int i;
-
-        lstrcpyA( (LPSTR) strPluginFuncMainW, (LPCSTR) pd->pFunction );
-        for (i = 0; ((LPCSTR) strPluginFuncMainW)[i] != 0; i++)
-        {
-          if ( ((LPCSTR) strPluginFuncMainW)[i] == ':' )
-          {
-            i += 2;
-            lstrcpyA( &((LPSTR) strPluginFuncMainW)[i], "Main" );
-            break;
-          }
-        }
-      }
-    }
-    else
-    {
-      if ( !strPluginFuncMainW[0] )
-      {
-        int i;
-
-        lstrcpyW( strPluginFuncMainW, (LPCWSTR) pd->pFunction );
-        for (i = 0; strPluginFuncMainW[i] != 0; i++)
-        {
-          if (strPluginFuncMainW[i] == L':')
-          {
-            i += 2;
-            lstrcpyW( &strPluginFuncMainW[i], L"Main" );
-            break;
-          }
-        }
-      }
-    }
+    GetFuncNameOfXBracketsMain(pd);
 
     ReadOptions();
   }
@@ -509,6 +473,14 @@ enum eMatchingBracketAction {
 
 static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
 {
+  if (!g_bInitialized)
+  {
+    if ( GetFuncNameOfXBracketsMain(pd) )
+    {
+      PluginCallXBracketsMain(pd->hMainWnd, pd->bOldWindows);
+    }
+  }
+
   if (g_bInitialized)
   {
     if ( (!IsBracketsHighlight(uBracketsHighlight)) || 
@@ -2001,6 +1973,90 @@ void SaveOptions()
     }
   }
 
+}
+
+BOOL GetFuncNameOfXBracketsMain(const PLUGINDATA *pd)
+{
+  int  i;
+  BOOL bResult;
+
+  bResult = TRUE;
+  if ( pd->bOldWindows )
+  {
+    char* pPluginFuncMainA;
+
+    pPluginFuncMainA = (LPSTR) strPluginFuncMainW;
+    if ( !pPluginFuncMainA[0] )
+    {
+      bResult = FALSE;
+      lstrcpyA( pPluginFuncMainA, (LPCSTR) pd->pFunction );
+      for (i = 0; (!bResult) && (pPluginFuncMainA[i] != 0); i++)
+      {
+        if ( (pPluginFuncMainA[i] == ':') && (pPluginFuncMainA[i+1] == ':') )
+        {
+          i += 2; // skip "::"
+          lstrcpyA( &pPluginFuncMainA[i], "Main" );
+          bResult = TRUE;
+        }
+      }
+    }
+  }
+  else
+  {
+    if ( !strPluginFuncMainW[0] )
+    {
+      bResult = FALSE;
+      lstrcpyW( strPluginFuncMainW, (LPCWSTR) pd->pFunction );
+      for (i = 0; (!bResult) && (strPluginFuncMainW[i] != 0); i++)
+      {
+        if ((strPluginFuncMainW[i] == L':') && (strPluginFuncMainW[i+1] == L':'))
+        {
+          i += 2; // skip "::"
+          lstrcpyW( &strPluginFuncMainW[i], L"Main" );
+          bResult = TRUE;
+        }
+      }
+    }
+  }
+
+  if ( !bResult )
+  {
+    strPluginFuncMainW[0] = 0;
+  }
+
+  return bResult;
+}
+
+BOOL PluginCallXBracketsMain(HWND hMainWnd, BOOL bOldWindows)
+{
+  int nCallResult = -1;
+
+  if ( bOldWindows )
+  {
+    if ( ((LPCSTR)strPluginFuncMainW)[0] )
+    {
+      PLUGINCALLSENDA pcsA;
+
+      pcsA.pFunction = (char *) strPluginFuncMainW;
+      pcsA.lParam = 0;
+      pcsA.dwSupport = 0;
+      nCallResult = (int) SendMessageA( hMainWnd, AKD_DLLCALLA, 0, (LPARAM) &pcsA );
+    }
+  }
+  else
+  {
+    if ( strPluginFuncMainW[0] )
+    {
+      PLUGINCALLSENDW pcsW;
+
+      pcsW.pFunction = (wchar_t *) strPluginFuncMainW;
+      pcsW.lParam = 0;
+      pcsW.dwSupport = 0;
+      nCallResult = (int) SendMessageW( hMainWnd, AKD_DLLCALLW, 0, (LPARAM) &pcsW );
+    }
+  }
+
+  return ((nCallResult > 0) ? TRUE : FALSE);
 }
 
 // Entry point

@@ -444,12 +444,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
     if (bDoInitializeHere)
     {
       // XBrackets::Main is unloaded, let's load it
-      PLUGINCALLSENDA pcsA;
-      pcsA.pFunction = (char *) strPluginFuncMainW;
-      //pcsA.bOnStart = FALSE;
-      pcsA.lParam = 0;
-      pcsA.dwSupport = 0;
-      SendMessageA( g_hMainWnd, AKD_DLLCALLA, 0, (LPARAM) &pcsA );
+      PluginCallXBracketsMain(g_hMainWnd, g_bOldWindows);
     }
     else
     {
@@ -466,12 +461,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
     if (bDoInitializeHere)
     {
       // XBrackets::Main is unloaded, let's load it
-      PLUGINCALLSENDW pcsW;
-      pcsW.pFunction = (wchar_t *) strPluginFuncMainW;
-      //pcsW.bOnStart = FALSE;
-      pcsW.lParam = 0;
-      pcsW.dwSupport = 0;
-      SendMessageW( g_hMainWnd, AKD_DLLCALLW, 0, (LPARAM) &pcsW );
+      PluginCallXBracketsMain(g_hMainWnd, g_bOldWindows);
     }
     else
     {
