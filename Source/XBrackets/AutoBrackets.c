@@ -2636,7 +2636,7 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
     if ( wch[1] != 0 && wch[1] != L'\r' )
       uFlags |= BTF_CHECK_TAGINV;
     nBrType = getLeftBracketTypeEx(wch[0], uFlags); // prev_wch
-    if ( nBrType != tbtNone ) //  (|
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition - 1) ) //  (|
     {
       if ( isDuplicatedPair(nBrType) )
       {
@@ -2664,11 +2664,9 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
 
   if ( wch[1] != 0 )
   {
-    uFlags = BTF_HIGHLIGHT;
-    if ( wch[0] != 0 && wch[0] != L'\r' )
-      uFlags |= BTF_CHECK_TAGINV;
+    uFlags = BTF_HIGHLIGHT; // not using BTF_CHECK_TAGINV in case of  |>
     nBrType = getLeftBracketTypeEx(wch[1], uFlags); // current_wch
-    if ( nBrType != tbtNone && nBrType != tbtTagInv ) //  |(
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition) ) //  |(
     {
       if ( isDuplicatedPair(nBrType) )
       {
@@ -2700,7 +2698,7 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
     if ( wch[0] != 0 && wch[0] != L'\r' )
       uFlags |= BTF_CHECK_TAGINV;
     nBrType = getRightBracketTypeEx(wch[1], uFlags); // current_wch
-    if ( nBrType != tbtNone ) //  |)
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition) ) //  |)
     {
       if ( isDuplicatedPair(nBrType) )
       {
@@ -2720,11 +2718,9 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
 
   if ( wch[0] != 0 )
   {
-    uFlags = BTF_HIGHLIGHT;
-    if ( wch[1] != 0 && wch[1] != L'\r' )
-      uFlags |= BTF_CHECK_TAGINV;
+    uFlags = BTF_HIGHLIGHT; // not using BTF_CHECK_TAGINV in case of  <|
     nBrType = getRightBracketTypeEx(wch[0], uFlags); // prev_wch
-    if ( nBrType != tbtNone && nBrType != tbtTagInv ) //  )|
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition - 1) ) //  )|
     {
       if ( isDuplicatedPair(nBrType) )
       {
@@ -2978,15 +2974,18 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState*
             tGetHighlightIndexesCookie c;
             if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nBrPos, abcDetectBr | abcBrIsOnRight | fqfDoNotCheckFold, &c) )
             {
-              nBrPos = c.pos1 - 1;  //  "|...  ->  |"...
-              if ( g_bAkelEdit )
+              if ( nBrPos == c.pos2 ) // really at "...|"
               {
-                if ( g_bOldWindows )
-                  SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
-                else
-                  SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
+                nBrPos = c.pos1 - 1;  //  "|...  ->  |"...
+                if ( g_bAkelEdit )
+                {
+                  if ( g_bOldWindows )
+                    SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
+                  else
+                    SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
+                }
+                continue;
               }
-              continue;
             }
 
             nDupPairDirection = getDuplicatedPairDirection(nBrPos, wch);
@@ -3248,15 +3247,18 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, tGetNearestBracketsState
             tGetHighlightIndexesCookie c;
             if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nBrPos, abcDetectBr | abcBrIsOnRight | fqfDoNotCheckFold, &c) )
             {
-              nBrPos = c.pos2;  //  ...|"
-              if ( g_bAkelEdit )
+              if ( nBrPos + 1 == c.pos1 ) // really at |"..."
               {
-                if ( g_bOldWindows )
-                  SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
-                else
-                  SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
+                nBrPos = c.pos2;  //  ...|"
+                if ( g_bAkelEdit )
+                {
+                  if ( g_bOldWindows )
+                    SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
+                  else
+                    SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
+                }
+                continue;
               }
-              continue;
             }
 
             nDupPairDirection = getDuplicatedPairDirection(nBrPos, wch);
