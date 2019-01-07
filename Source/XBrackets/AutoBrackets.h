@@ -13,8 +13,14 @@
 #define DEFAULT_MAX_BR_LINES 0
 
 // highlight style flags
-#define XBR_HSF_BOLDFONT     0x0001
-#define XBR_HSF_REDRAWCODER  0x0002
+#define XBR_HSF_BOLDFONT      0x0001
+#define XBR_HSF_REDRAWCODER   0x0002
+
+// highlight xmode flags
+#define XBR_HXM_XBRINTERNAL   0x0001
+#define XBR_HXM_AKELHIGHLIGHT 0x0002
+#define XBR_HXM_AKELFOLD      0x0004
+#define XBR_HXM_ALL           (XBR_HXM_XBRINTERNAL | XBR_HXM_AKELHIGHLIGHT | XBR_HXM_AKELFOLD)
 
 // get active brackets flags
 #define XBR_GBF_HIGHLIGHTBR  0x0001 // highlight active brackets

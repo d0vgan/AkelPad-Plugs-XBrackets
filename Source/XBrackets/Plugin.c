@@ -149,6 +149,7 @@ static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   "autocomplete.sel_autobr",
   "highlight.hlt_bothbr",
   "highlight.hlt_style",
+  "highlight.hlt_xmode",
   "highlight.quote_detect_lines",
   "highlight.quote_max_lines",
   "highlight.br_max_lines",
@@ -173,6 +174,7 @@ static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   L"autocomplete.sel_autobr",
   L"highlight.hlt_bothbr",
   L"highlight.hlt_style",
+  L"highlight.hlt_xmode",
   L"highlight.quote_detect_lines",
   L"highlight.quote_max_lines",
   L"highlight.br_max_lines",
@@ -1620,6 +1622,8 @@ void ReadOptions()
     g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_BOTHBR] = 1;
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_STYLE] == OPT_UNDEFINED_DWORD)
     g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_STYLE] = XBR_HSF_BOLDFONT | XBR_HSF_REDRAWCODER;
+  if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] = XBR_HXM_ALL;
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] == OPT_UNDEFINED_DWORD)
     g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] = DEFAULT_MAX_DETECT_DUPPAIR_LINES;
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES] == OPT_UNDEFINED_DWORD)

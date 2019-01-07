@@ -138,6 +138,17 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     Pair brackets are highlighted using default font.
     XBrackets does not redraw brackets highlighted by Coder.
 
+  highlight.hlt_xmode = 7
+    This option controls what is used by XBrackets to search and highlight
+    pair brackets. It allows to disable calls to AkelEdit about the file
+    syntax as well as usage of the internal pair bracket searching algorithm.
+    This option is supposed to be used for experimental purposes.
+    The value of this option will be the sum of the following numbers which
+    are responsible for the plugin behavior:
+    1 - use the internal pair bracket/quote searching algorithm;
+    2 - use AEM_HLGETHIGHLIGHT (highlight, quotes);
+    4 - use AEM_FINDFOLD (folding blocks).
+
   highlight.quote_detect_lines = 1
     Number of text lines to be processed by XBrackets while searching for
     a pair quote in both directions (when the search direction can not be
@@ -179,6 +190,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.7.2 (July 2016)
+ + option 'highlight.hlt_xmode'
+
 v.7.1 (July 2016)
  * AkelPad 4.9.8+
 

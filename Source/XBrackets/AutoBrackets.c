@@ -1544,22 +1544,25 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
 
 static void GetHighlightDataFromAkelEdit(const INT_X nCharacterPosition, tGetHighlightIndexesCookie* pCookieHL)
 {
-  AEGETHIGHLIGHT aehl;
-
   pCookieHL->pos1 = -1;
   pCookieHL->pos2 = -1;
   pCookieHL->nResult = ghlrNone;
   CharacterHighlightData_Clear(&pCookieHL->chd);
 
-  aehl.dwCookie = (UINT_PTR) pCookieHL;
-  aehl.dwError = 0;
-  aehl.dwFlags = 0/*AEGHF_NOSELECTION | AEGHF_NOACTIVELINETEXT | AEGHF_NOACTIVELINEBK*/;
-  aehl.lpCallback = GetAkelEditHighlightCallback;
-  SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, 
-    (WPARAM) nCharacterPosition, (LPARAM) &aehl.crText.ciMin);
-  AEC_NextCharEx(&aehl.crText.ciMin, &aehl.crText.ciMax);
-  // the range is [ciMin, ciMax)
-  SendMessage(hActualEditWnd, AEM_HLGETHIGHLIGHT, 0, (LPARAM)&aehl);
+  if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] & XBR_HXM_AKELHIGHLIGHT)
+  {
+    AEGETHIGHLIGHT aehl;
+
+    aehl.dwCookie = (UINT_PTR) pCookieHL;
+    aehl.dwError = 0;
+    aehl.dwFlags = 0/*AEGHF_NOSELECTION | AEGHF_NOACTIVELINETEXT | AEGHF_NOACTIVELINEBK*/;
+    aehl.lpCallback = GetAkelEditHighlightCallback;
+    SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, 
+      (WPARAM) nCharacterPosition, (LPARAM) &aehl.crText.ciMin);
+    AEC_NextCharEx(&aehl.crText.ciMin, &aehl.crText.ciMax);
+    // the range is [ciMin, ciMax)
+    SendMessage(hActualEditWnd, AEM_HLGETHIGHLIGHT, 0, (LPARAM)&aehl);
+  }
 }
 
 static DWORD GetInSelectionState(const INT_X nCharacterPosition, const CHARRANGE_X* pSelection)
@@ -1578,7 +1581,6 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 {
   tGetHighlightIndexesCookie cookie;
   tGetHighlightIndexesCookie cookieHL;
-  AEFINDFOLD ff;
   BOOL bTag2;
 
   bTag2 = FALSE;
@@ -1590,195 +1592,200 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   cookie.chd.dwState |= GetInSelectionState(nCharacterPosition, pSelection);
 
   // first we check for a fold...
-  if (bRightBracket)
+  if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] & XBR_HXM_AKELFOLD)
   {
-    ff.dwFlags = AEFF_FINDOFFSET | AEFF_FOLDSTART;
-    ff.dwFindIt = nCharacterPosition - 1;
-  }
-  else
-  {
-    ff.dwFlags = AEFF_FINDOFFSET | AEFF_FOLDEND;
-    ff.dwFindIt = nCharacterPosition + 1;
-  }
-  ff.lpParent = NULL;
-  ff.lpPrevSubling = NULL;
+    AEFINDFOLD ff;
 
-  SendMessage(hActualEditWnd, AEM_FINDFOLD, (WPARAM) &ff, 0);
-  if (ff.lpParent)
-  {
-    // fold found
-    if ((ff.lpParent->lpMaxPoint->nPointLen > 0) &&
-        (ff.lpParent->lpMinPoint->nPointLen > 0))
+    if (bRightBracket)
     {
-      const wchar_t* p;
-      int n;
-      int i;
-      wchar_t wch;
+      ff.dwFlags = AEFF_FINDOFFSET | AEFF_FOLDSTART;
+      ff.dwFindIt = nCharacterPosition - 1;
+    }
+    else
+    {
+      ff.dwFlags = AEFF_FINDOFFSET | AEFF_FOLDEND;
+      ff.dwFindIt = nCharacterPosition + 1;
+    }
+    ff.lpParent = NULL;
+    ff.lpPrevSubling = NULL;
 
-      if (bRightBracket)
+    SendMessage(hActualEditWnd, AEM_FINDFOLD, (WPARAM) &ff, 0);
+    if (ff.lpParent)
+    {
+      // fold found
+      if ((ff.lpParent->lpMaxPoint->nPointLen > 0) &&
+          (ff.lpParent->lpMinPoint->nPointLen > 0))
       {
-        //  ... }
-        cookie.pos2 = (INT_X) ff.lpParent->lpMaxPoint->nPointOffset;
-        if (cookie.pos2 >= 0)
-          cookie.pos2 += (ff.lpParent->lpMaxPoint->nPointLen - 1);
+        const wchar_t* p;
+        int n;
+        int i;
+        wchar_t wch;
 
-        if (cookie.pos2 == nCharacterPosition)
+        if (bRightBracket)
         {
-          const AEPOINT* aePt = ff.lpParent->lpMinPoint;
-          p = aePt->ciPoint.lpLine->wpLine + aePt->ciPoint.nCharInLine;
-          n = aePt->ciPoint.lpLine->nLineLen - aePt->ciPoint.nCharInLine;
-          if (n > aePt->nPointLen)
-            n = aePt->nPointLen;
-          i = 0;
-          wch = getBracketsPairW(nBracketType)[0]; // left bracket
+          //  ... }
+          cookie.pos2 = (INT_X) ff.lpParent->lpMaxPoint->nPointOffset;
+          if (cookie.pos2 >= 0)
+            cookie.pos2 += (ff.lpParent->lpMaxPoint->nPointLen - 1);
 
-          while (i < n)
+          if (cookie.pos2 == nCharacterPosition)
           {
-            if (p[i] == wch)
+            const AEPOINT* aePt = ff.lpParent->lpMinPoint;
+            p = aePt->ciPoint.lpLine->wpLine + aePt->ciPoint.nCharInLine;
+            n = aePt->ciPoint.lpLine->nLineLen - aePt->ciPoint.nCharInLine;
+            if (n > aePt->nPointLen)
+              n = aePt->nPointLen;
+            i = 0;
+            wch = getBracketsPairW(nBracketType)[0]; // left bracket
+
+            while (i < n)
             {
-              cookie.pos1 = (INT_X) aePt->nPointOffset;
-              cookie.pos1 += i;
-              break;
+              if (p[i] == wch)
+              {
+                cookie.pos1 = (INT_X) aePt->nPointOffset;
+                cookie.pos1 += i;
+                break;
+              }
+              ++i;
             }
-            ++i;
-          }
 
-          if (cookie.pos1 >= 0)
-          {
-            cookie.nResult = ghlrPair;
-            cookie.chd.dwFontStyle = ff.lpParent->dwFontStyle;
-            if (ff.lpParent->crText != (DWORD)(-1))
-              cookie.chd.dwActiveTextColor = ff.lpParent->crText;
-            if (ff.lpParent->crBk != (DWORD)(-1))
-              cookie.chd.dwActiveBkColor = ff.lpParent->crBk;
+            if (cookie.pos1 >= 0)
+            {
+              cookie.nResult = ghlrPair;
+              cookie.chd.dwFontStyle = ff.lpParent->dwFontStyle;
+              if (ff.lpParent->crText != (DWORD)(-1))
+                cookie.chd.dwActiveTextColor = ff.lpParent->crText;
+              if (ff.lpParent->crBk != (DWORD)(-1))
+                cookie.chd.dwActiveBkColor = ff.lpParent->crBk;
+            }
+            else
+              cookie.pos2 = -1;
           }
           else
             cookie.pos2 = -1;
         }
         else
-          cookie.pos2 = -1;
-      }
-      else
-      {
-        //  { ...
-        cookie.pos1 = (INT_X) ff.lpParent->lpMinPoint->nPointOffset;
-        if (cookie.pos1 == nCharacterPosition)
         {
-          const AEPOINT* aePt = ff.lpParent->lpMaxPoint;
-          p = aePt->ciPoint.lpLine->wpLine + aePt->ciPoint.nCharInLine;
-          n = aePt->ciPoint.lpLine->nLineLen - aePt->ciPoint.nCharInLine;
-          if (n > aePt->nPointLen)
-            n = aePt->nPointLen;
-          wch = getBracketsPairW(nBracketType)[1]; // right bracket
-
-          while (--n >= 0)
+          //  { ...
+          cookie.pos1 = (INT_X) ff.lpParent->lpMinPoint->nPointOffset;
+          if (cookie.pos1 == nCharacterPosition)
           {
-            if (p[n] == wch)
+            const AEPOINT* aePt = ff.lpParent->lpMaxPoint;
+            p = aePt->ciPoint.lpLine->wpLine + aePt->ciPoint.nCharInLine;
+            n = aePt->ciPoint.lpLine->nLineLen - aePt->ciPoint.nCharInLine;
+            if (n > aePt->nPointLen)
+              n = aePt->nPointLen;
+            wch = getBracketsPairW(nBracketType)[1]; // right bracket
+
+            while (--n >= 0)
             {
-              cookie.pos2 = (INT_X) aePt->nPointOffset;
-              cookie.pos2 += n;
-              break;
+              if (p[n] == wch)
+              {
+                cookie.pos2 = (INT_X) aePt->nPointOffset;
+                cookie.pos2 += n;
+                break;
+              }
             }
-          }
 
-          if (cookie.pos2 >= 0)
-          {
-            cookie.nResult = ghlrPair;
-            cookie.chd.dwFontStyle = ff.lpParent->dwFontStyle;
-            if (ff.lpParent->crText != (DWORD)(-1))
-              cookie.chd.dwActiveTextColor = ff.lpParent->crText;
-            if (ff.lpParent->crBk != (DWORD)(-1))
-              cookie.chd.dwActiveBkColor = ff.lpParent->crBk;
+            if (cookie.pos2 >= 0)
+            {
+              cookie.nResult = ghlrPair;
+              cookie.chd.dwFontStyle = ff.lpParent->dwFontStyle;
+              if (ff.lpParent->crText != (DWORD)(-1))
+                cookie.chd.dwActiveTextColor = ff.lpParent->crText;
+              if (ff.lpParent->crBk != (DWORD)(-1))
+                cookie.chd.dwActiveBkColor = ff.lpParent->crBk;
+            }
+            else
+              cookie.pos1 = -1;
           }
           else
             cookie.pos1 = -1;
         }
-        else
-          cookie.pos1 = -1;
       }
-    }
 
-    if (cookie.pos2 >= 0)
-    {
-      if (nBracketType == tbtTag)
+      if (cookie.pos2 >= 0)
       {
-        // < ... >
-        WCHAR wch;
-
-        if (bRightBracket)
+        if (nBracketType == tbtTag)
         {
-          if (ff.lpParent->lpMaxPoint->nPointLen > 1)
+          // < ... >
+          WCHAR wch;
+
+          if (bRightBracket)
           {
-            // maybe < ... [<]...>
+            if (ff.lpParent->lpMaxPoint->nPointLen > 1)
+            {
+              // maybe < ... [<]...>
+              const AECHARINDEX* aeCh = &ff.lpParent->lpMaxPoint->ciPoint;
+              wch = aeCh->lpLine->wpLine[aeCh->nCharInLine];
+              if (wch == L'<')
+              {
+                // yes, < ... [<]...>
+                cookie.pos1 = (INT_X) ff.lpParent->lpMaxPoint->nPointOffset;
+              }
+            }
+          }
+          else
+          {
             const AECHARINDEX* aeCh = &ff.lpParent->lpMaxPoint->ciPoint;
             wch = aeCh->lpLine->wpLine[aeCh->nCharInLine];
             if (wch == L'<')
             {
-              // yes, < ... [<]...>
-              cookie.pos1 = (INT_X) ff.lpParent->lpMaxPoint->nPointOffset;
-            }
-          }
-        }
-        else
-        {
-          const AECHARINDEX* aeCh = &ff.lpParent->lpMaxPoint->ciPoint;
-          wch = aeCh->lpLine->wpLine[aeCh->nCharInLine];
-          if (wch == L'<')
-          {
-            // < ... <
-            if (ff.lpParent->lpMinPoint->nPointLen > 1)
-            {
-              // maybe <...[>] ... <
-              cookie.pos2 = (INT_X) ff.lpParent->lpMinPoint->nPointOffset;
-              cookie.pos2 += (ff.lpParent->lpMinPoint->nPointLen /*- 1*/);
-
-              if (g_bOldWindows)
+              // < ... <
+              if (ff.lpParent->lpMinPoint->nPointLen > 1)
               {
-                const char ch = AnyRichEdit_GetCharAt(hActualEditWnd, cookie.pos2);
-                wch = char2wchar(ch);
+                // maybe <...[>] ... <
+                cookie.pos2 = (INT_X) ff.lpParent->lpMinPoint->nPointOffset;
+                cookie.pos2 += (ff.lpParent->lpMinPoint->nPointLen /*- 1*/);
+
+                if (g_bOldWindows)
+                {
+                  const char ch = AnyRichEdit_GetCharAt(hActualEditWnd, cookie.pos2);
+                  wch = char2wchar(ch);
+                }
+                else
+                  wch = AnyRichEdit_GetCharAtW(hActualEditWnd, cookie.pos2);
+
+                if (wch != L'>')
+                {
+                  // not <...[>] ... <
+                  cookie.pos2 = -1;
+                  cookie.nResult = ghlrSingleChar;
+                }
               }
               else
-                wch = AnyRichEdit_GetCharAtW(hActualEditWnd, cookie.pos2);
-
-              if (wch != L'>')
               {
-                // not <...[>] ... <
                 cookie.pos2 = -1;
                 cookie.nResult = ghlrSingleChar;
               }
             }
-            else
+            /*else
+              cookie.pos2 += (ff.lpParent->lpMaxPoint->nPointLen - 1);*/
+          }
+
+          if (cookie.pos2 >= 0)
+          {
+            if (g_bOldWindows)
             {
-              cookie.pos2 = -1;
-              cookie.nResult = ghlrSingleChar;
+              const char ch = AnyRichEdit_GetCharAt(hActualEditWnd, cookie.pos2 - 1);
+              wch = char2wchar(ch);
+            }
+            else
+              wch = AnyRichEdit_GetCharAtW(hActualEditWnd, cookie.pos2 - 1);
+
+            if (wch == L'/')
+            {
+              // < ... />
+              bTag2 = TRUE;
             }
           }
-          /*else
-            cookie.pos2 += (ff.lpParent->lpMaxPoint->nPointLen - 1);*/
         }
-
-        if (cookie.pos2 >= 0)
+        /*else
         {
-          if (g_bOldWindows)
-          {
-            const char ch = AnyRichEdit_GetCharAt(hActualEditWnd, cookie.pos2 - 1);
-            wch = char2wchar(ch);
-          }
-          else
-            wch = AnyRichEdit_GetCharAtW(hActualEditWnd, cookie.pos2 - 1);
-
-          if (wch == L'/')
-          {
-            // < ... />
-            bTag2 = TRUE;
-          }
-        }
+          if (!bRightBracket)
+            cookie.pos2 += (ff.lpParent->lpMaxPoint->nPointLen - 1);
+        }*/
       }
-      /*else
-      {
-        if (!bRightBracket)
-          cookie.pos2 += (ff.lpParent->lpMaxPoint->nPointLen - 1);
-      }*/
     }
   }
 
@@ -1951,7 +1958,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   BOOL  bRightBracket;
   WCHAR wch;
 
-  if ( nCharacterPosition < 0 )
+  if ( (nCharacterPosition < 0) || ((g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] & XBR_HXM_ALL) == 0) )
     return FALSE;
 
   /*
@@ -2098,6 +2105,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           return TRUE; // pair found: nothing to process additionally
       }
     }
+
+    if ((g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_XMODE] & XBR_HXM_XBRINTERNAL) == 0)
+      return FALSE; // nothing to do
 
     // check for duplicated pair (e.g. "" quotes)
     if (getBracketsPairW(nBracketType)[0] == getBracketsPairW(nBracketType)[1])
@@ -2656,6 +2666,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
       {
         if (nGetHighlightResult == ghlrSingleChar)
         {
+          // we can get here _only_ as the result of GetAkelEditHighlightInfo call
           const tCharacterHighlightData* pchd;
 
           pchd = CharacterInfo_GetHighlightDataConst(hgltCharacterInfo, nCharacterPosition);
@@ -2688,6 +2699,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
         if (nGetHighlightResult == ghlrSingleChar)
         {
+          // we can get here _only_ as the result of GetAkelEditHighlightInfo call
           const tCharacterHighlightData* pchd;
 
           pchd = CharacterInfo_GetHighlightDataConst(hgltCharacterInfo, nCharacterPosition);
