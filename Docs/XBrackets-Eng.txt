@@ -179,6 +179,16 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.6.2 (April 2015)
+ - fixed: color theme change was not handled properly
+ + several improvements/fixes
+ + new option: Treat " " as brackets
+ + several improvements/fixes once again
+ + the checkboxes for the " ", ' ' and < > pairs have 3 states now:
+   [v] Autocomplete + highlight
+   [o] Highlight only
+   [ ] Off
+
 v.6.1 (March 2015)
  + license info added (see below)
 
@@ -386,7 +396,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Mar 2015, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Apr 2015, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);

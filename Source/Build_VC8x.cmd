@@ -20,7 +20,7 @@ Set LIB=%MSSDK%\lib;%VCDIR%\lib;%LIB%
 cd .\XBrackets
 
 rc /r /Fo"XBrackets.res" "XBrackets.rc"
-cl /O1 AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XBrackets.res /LD /link kernel32.lib user32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /ENTRY:DllMain /OUT:..\..\Plugs\XBrackets.dll
+cl /O1 AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /ENTRY:DllMain /OUT:..\..\Plugs\XBrackets.dll
 
 if exist XBrackets.res del XBrackets.res
 if exist AutoBrackets.lib del AutoBrackets.lib

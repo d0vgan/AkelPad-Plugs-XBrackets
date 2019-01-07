@@ -24,7 +24,7 @@ set MACHINE=AMD64
 cd .\XBrackets
 
 rc /R /DRC_VERSIONBIT=%BIT% /Fo"XBrackets.res" "XBrackets.rc"
-cl /O1 %CLFLAGS% /D "AKELPAD_X64" AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XBrackets.res /LD /link kernel32.lib user32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /ENTRY:DllMain /OUT:..\..\Plugs64\XBrackets.dll
+cl /O1 %CLFLAGS% /D "AKELPAD_X64" AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /ENTRY:DllMain /OUT:..\..\Plugs64\XBrackets.dll
 
 if exist XBrackets.res del XBrackets.res
 if exist AutoBrackets.lib del AutoBrackets.lib

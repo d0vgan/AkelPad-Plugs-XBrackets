@@ -16,19 +16,38 @@
 #define XBR_HSF_BOLDFONT     0x0001
 #define XBR_HSF_REDRAWCODER  0x0002
 
+// get active brackets flags
+#define XBR_GBF_HIGHLIGHTBR  0x0001 // highlight active brackets
+#define XBR_GBF_UPDATEHLDATA 0x0100 // update highlight data of "cached" brackets
 
-typedef struct structMSGINFO {
+
+typedef struct sMSGINFO {
   HWND   hWnd;
   UINT   uMsg;
   WPARAM wParam;
   LPARAM lParam;
 } MSGINFO;
 
+// For brackets auto-completion only.
 void  OnEditCharPressed(MSGINFO* pmsgi);
-void  OnEditGetActiveBrackets(MSGINFO* pmsgi, const BOOL bAndHighlight /* = TRUE */);
+
+// For both brackets auto-completion and active brackets highlight.
+// Mostly used for active brackets highlight.
+// Uses "cached" brackets data if it exists.
+void  OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags /* = XBR_GBF_HIGHLIGHTBR */);
+
+// Highlights active brackets.
+// Mostly this function is called from OnEditGetActiveBrackets.
 void  OnEditHighlightActiveBrackets(void);
+
+// Removes all the "cached" brackets data.
+// Also repaints the brackets when bRepaint=TRUE.
 void  RemoveAllHighlightInfo(const BOOL bRepaint /* = TRUE */);
+
+// Gets file type to use proper file-type-depenedent options.
 int   getFileType(int* pnCurrentFileType2);
+
+// To be called on plugin unloading or unitialization.
 void  AutoBrackets_Uninitialize(void);
 
 void  setNextCharOkW(const wchar_t* cszNextCharOkW);

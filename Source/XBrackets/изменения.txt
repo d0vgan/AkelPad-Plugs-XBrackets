@@ -1,4 +1,15 @@
-﻿May 2014
+﻿Apr 2015
+--------
++ теперь OnEditGetActiveBrackets умеет XBR_GBF_UPDATEHLDATA
++ обрабатываем AEM_HLSETTHEME
++ теперь AEN_TEXTCHANGING и AEN_TEXTCHANGED обрабатываются только при
+  условиях (pnmhdr->hwndFrom == g_hFocusedEditWnd) && 
+   (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument).
++ добавлен BOOL bAkelPadIsStarting, чтобы исключить попытки перерисовки
+  скобок, пока AkelPad запускается.
+
+
+May 2014
 --------
 - AKD_GETEDITINFO может вернуть FALSE, если нет информации по окну.
   Структура EDITINFO в этом случае не заполняется.

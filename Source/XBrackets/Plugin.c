@@ -45,6 +45,7 @@ void OnAenPaint(AENPAINT* p);
 
 // Global variables
 HWND         g_hMainWnd = NULL;
+HINSTANCE    g_hInstanceDLL = NULL;
 BOOL         g_bOldWindows = FALSE;
 BOOL         g_bOldRichEdit = FALSE; // TRUE means Rich Edit 2.0
 int          g_nMDI = 0;
@@ -61,13 +62,19 @@ UINT         uBracketsHighlight = BRHLF_ENABLED | BRHLF_TEXT;
 BOOL         bBracketsAutoComplete = TRUE;
 BOOL         bBracketsHighlightVisibleArea = FALSE;
 BOOL         bBracketsRightExistsOK = FALSE;
+BOOL         bBracketsDoDoubleQuote = FALSE;
 BOOL         bBracketsDoSingleQuote = FALSE;
 BOOL         bBracketsDoTag = FALSE;
 BOOL         bBracketsDoTag2 = FALSE;
 BOOL         bBracketsDoTagIf = FALSE;
+BOOL         bBracketsHighlightDoubleQuote = FALSE;
+BOOL         bBracketsHighlightSingleQuote = FALSE;
+BOOL         bBracketsHighlightTag = FALSE;
 BOOL         bBracketsSkipEscaped = FALSE;
 BOOL         bBracketsSkipComment1 = FALSE;
 BOOL         bGoToMatchingBracketTriggered = FALSE;
+BOOL         bAkelPadIsStarting = FALSE; // when XBrackets is not autoloaded, it _must_ be FALSE
+BOOL         bAkelPadIsFinishing = FALSE;
 BOOL         bOpeningNewDocument = FALSE;
 BOOL         bDocumentJustOpened = FALSE;
 HWND         hDocumentJustOpenedWnd = NULL;
@@ -103,6 +110,10 @@ wchar_t      strPluginFuncMainW[STR_PLUGINFUNC_SIZE] = { 0 };
 #define      OPTF_DOTAG2              0x0800
 #define      OPTF_SKIPESCAPED         0x1000
 #define      OPTF_SKIPCOMMENT1        0x2000
+#define      OPTF_DONOTDOUBLEQUOTE    0x010000
+#define      OPTF_HLDOUBLEQUOTE       0x100000
+#define      OPTF_HLSINGLEQUOTE       0x200000
+#define      OPTF_HLTAG               0x400000
 
 DWORD        opt_dwOptionsFlags0 = OPT_UNDEFINED_DWORD;
 DWORD        opt_dwHighlightRGB0[2] = { OPT_UNDEFINED_DWORD, OPT_UNDEFINED_DWORD };
@@ -340,7 +351,11 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   UINT     prevBracketsHighlight;
   BOOL     prevBracketsDoTag;
   BOOL     prevBracketsDoTagIf;
+  BOOL     prevBracketsDoDoubleQuote;
   BOOL     prevBracketsDoSingleQuote;
+  BOOL     prevBracketsHighlightTag;
+  BOOL     prevBracketsHighlightDoubleQuote;
+  BOOL     prevBracketsHighlightSingleQuote;
   BOOL     prevBracketsSkipEscaped;
   BOOL     prevBracketsSkipComment1;
   BOOL     bUpdateBracketsHighlight;
@@ -405,7 +420,11 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   prevBracketsHighlight = uBracketsHighlight;
   prevBracketsDoTag = bBracketsDoTag;
   prevBracketsDoTagIf = bBracketsDoTagIf;
+  prevBracketsDoDoubleQuote = bBracketsDoDoubleQuote;
   prevBracketsDoSingleQuote = bBracketsDoSingleQuote;
+  prevBracketsHighlightTag = bBracketsHighlightTag;
+  prevBracketsHighlightDoubleQuote = bBracketsHighlightDoubleQuote;
+  prevBracketsHighlightSingleQuote = bBracketsHighlightSingleQuote;
   prevBracketsSkipEscaped = bBracketsSkipEscaped;
   prevBracketsSkipComment1 = bBracketsSkipComment1;
   bUpdateBracketsHighlight = FALSE;
@@ -428,7 +447,11 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
 
   if ((prevBracketsDoTag != bBracketsDoTag) ||
       (prevBracketsDoTagIf != bBracketsDoTagIf) ||
+      (prevBracketsDoDoubleQuote != bBracketsDoDoubleQuote) ||
       (prevBracketsDoSingleQuote != bBracketsDoSingleQuote) ||
+      (prevBracketsHighlightTag != bBracketsHighlightTag) ||
+      (prevBracketsHighlightDoubleQuote != bBracketsHighlightDoubleQuote) ||
+      (prevBracketsHighlightSingleQuote != bBracketsHighlightSingleQuote) ||
       (prevBracketsSkipEscaped != bBracketsSkipEscaped) ||
       (prevBracketsSkipComment1 != bBracketsSkipComment1))
   {
@@ -454,7 +477,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       {
         MSGINFO msgi = { pd->hWndEdit, WM_PAINT, 0, 0 };
 
-        OnEditGetActiveBrackets(&msgi, TRUE);
+        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
       }
       else if (/*(prevBracketsHighlight != uBracketsHighlight) ||*/
                (prevColourHighlight[0] != bracketsColourHighlight[0]) ||
@@ -503,7 +526,7 @@ static void DoMatchingBracketAction(const PLUGINDATA *pd, int action)
       msgi.uMsg = WM_PAINT;
       msgi.wParam = 0;
       msgi.lParam = 0;
-      OnEditGetActiveBrackets(&msgi, FALSE);
+      OnEditGetActiveBrackets(&msgi, 0);
 
       // restoring previous value
       bBracketsHighlightVisibleArea = prevBracketsHighlightVisibleArea;
@@ -656,15 +679,44 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   MSGINFO msgi;
   BOOL    bTextChangedLocal = FALSE;
+  
+  static BOOL bHLSetTheme = FALSE;
 
-  if ((uMsg == AEM_ADDCLONE) || (uMsg == AEM_DELCLONE))
+  if ((uMsg == AEM_ADDCLONE) || 
+      (uMsg == AEM_DELCLONE) ||
+      (uMsg == AEM_HLSETTHEME))
   {
     LRESULT  lResult = 0;
       
     if (pEditProcData && pEditProcData->NextProc)
       lResult = pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
-    bOpeningNewDocument = FALSE;
+    if (uMsg == AEM_HLSETTHEME)
+    {
+      // only for AEM_HLSETTHEME
+      if (IsBracketsHighlight(uBracketsHighlight))
+      {
+        if (hWnd == g_hFocusedEditWnd)
+        {
+          if (wParam) // theme handle
+          {
+            bHLSetTheme = TRUE;
+
+            msgi.hWnd = hWnd;
+            msgi.uMsg = WM_PAINT;
+            msgi.wParam = 0;
+            msgi.lParam = 0;
+
+            OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
+          }
+        }
+      }
+    }
+    else
+    {
+      // only for AEM_ADDCLONE + AEM_DELCLONE
+      bOpeningNewDocument = FALSE;
+    }
 
     return lResult;
   }
@@ -696,14 +748,12 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           if (ei.hWndEdit == hWnd)
           {
-            MSGINFO msgi;
-
             msgi.hWnd = hWnd;
             msgi.uMsg = WM_SETFOCUS;
             msgi.wParam = 0;
             msgi.lParam = 0;
 
-            OnEditGetActiveBrackets(&msgi, TRUE);
+            OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
           }
         }
       }
@@ -780,7 +830,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         msgi.wParam = wParam;
         msgi.lParam = lParam;
 
-        OnEditGetActiveBrackets(&msgi, TRUE);
+        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
 
         return lResult;
       }
@@ -795,14 +845,38 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       if (bDocumentJustOpened && (hWnd == hDocumentJustOpenedWnd))
       {
-        MSGINFO msgi = { hWnd, WM_PAINT, 0, 0 };
-        OnEditGetActiveBrackets(&msgi, TRUE);
+        unsigned int uFlags;
+
+        msgi.hWnd   = hWnd;
+        msgi.uMsg   = WM_PAINT;
+        msgi.wParam = 0;
+        msgi.lParam = 0;
+
+        uFlags = XBR_GBF_HIGHLIGHTBR;
+        if (bHLSetTheme && (hWnd == g_hFocusedEditWnd))
+        {
+          bHLSetTheme = FALSE;
+          uFlags |= XBR_GBF_UPDATEHLDATA;
+        }
+        OnEditGetActiveBrackets(&msgi, uFlags);
         bDocumentJustOpened = FALSE;
         hDocumentJustOpenedWnd = NULL;
       }
       else if (hWnd == g_hFocusedEditWnd)
       {
-        OnEditHighlightActiveBrackets();
+        if (bHLSetTheme)
+        {
+          bHLSetTheme = FALSE;
+
+          msgi.hWnd   = hWnd;
+          msgi.uMsg   = WM_PAINT;
+          msgi.wParam = 0;
+          msgi.lParam = 0;
+
+          OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
+        }
+        else
+          OnEditHighlightActiveBrackets();
       }
 
       return lResult;
@@ -829,11 +903,53 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
     LRESULT lResult = 0;
 
+    bAkelPadIsFinishing = TRUE;
+
     if (pMainProcData && pMainProcData->NextProc)
       lResult = pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
     SaveOptions();
     Uninitialize(TRUE);
+
+    return lResult;
+  }
+
+  if ((uMsg == AKDN_MAIN_ONSTART_PRESHOW) ||
+      (uMsg == AKDN_MAIN_ONSTART_SHOW) ||
+      (uMsg == AKDN_MAIN_ONSTART_FINISH))
+  {
+    LRESULT lResult = 0;
+
+    // before processing the message...
+    if ((uMsg == AKDN_MAIN_ONSTART_PRESHOW) || 
+        (uMsg == AKDN_MAIN_ONSTART_SHOW))
+    {
+      bAkelPadIsStarting = TRUE;
+    }
+
+    // processing the message...
+    if (pMainProcData && pMainProcData->NextProc)
+      lResult = pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
+
+    // after processing the message...
+    if (uMsg == AKDN_MAIN_ONSTART_FINISH)
+    {
+      bAkelPadIsStarting = FALSE;
+
+      if (IsBracketsHighlight(uBracketsHighlight))
+      {
+        EDITINFO ei;
+
+        ei.hWndEdit = NULL;
+        if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei) != 0)
+        {
+          MSGINFO msgi = { ei.hWndEdit, WM_PAINT, 0, 0 };
+
+          OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+        }
+      }
+
+    }
 
     return lResult;
   }
@@ -861,7 +977,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       /*if (IsBracketsHighlight(uBracketsHighlight))
       {
         MSGINFO msgi = { (HWND) wParam, WM_PAINT, 0, 0 };
-        OnEditGetActiveBrackets(&msgi, TRUE);
+        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
       }*/
 
       return lResult;
@@ -927,65 +1043,67 @@ LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  MSGINFO msgi;
+
   if (uMsg == WM_NOTIFY)
   {
     if (wParam == ID_EDIT)
     {
-      if (((NMHDR *)lParam)->code == EN_SELCHANGE)
+      NMHDR* pnmhdr = (NMHDR *) lParam;
+      if (pnmhdr->hwndFrom == g_hFocusedEditWnd)
       {
-        if (g_hFocusedEditWnd == ((NMHDR *)lParam)->hwndFrom)
+        if (pnmhdr->code == EN_SELCHANGE)
         {
-          MSGINFO msgi;
-
-          msgi.hWnd = ((NMHDR *)lParam)->hwndFrom;
-          msgi.uMsg = WM_PAINT;
-          msgi.wParam = 0;
-          msgi.lParam = 0;
-          
           if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
           {
-            OnEditGetActiveBrackets(&msgi, TRUE);
+            msgi.hWnd = pnmhdr->hwndFrom;
+            msgi.uMsg = WM_PAINT;
+            msgi.wParam = 0;
+            msgi.lParam = 0;
+
+            OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
           }
         }
-      }
-      else if (g_bAkelEdit)
-      {
-        // AkelEdit control
-        switch (((NMHDR *)lParam)->code)
+        else if (g_bAkelEdit)
         {
-          case AEN_TEXTCHANGING:
+          // AkelEdit control
+          switch (pnmhdr->code)
           {
-            // before the text is changed: removing the highlighting
-            RemoveAllHighlightInfo(TRUE);
-            bGoToMatchingBracketTriggered = FALSE;
-            break;
-          }
-          case AEN_TEXTCHANGED:
-          {
-            // after the text is changed: updating the highlighting
-            if (IsBracketsHighlight(uBracketsHighlight))
+            case AEN_TEXTCHANGING:
             {
-              MSGINFO msgi;
-
-              msgi.hWnd = ((NMHDR *)lParam)->hwndFrom;
-              msgi.uMsg = WM_PAINT;
-              msgi.wParam = 0;
-              msgi.lParam = 0;
-
-              OnEditGetActiveBrackets(&msgi, TRUE);
+              // before the text is changed: removing the highlighting
+              if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
+              {
+                RemoveAllHighlightInfo(TRUE);
+              }
+              bGoToMatchingBracketTriggered = FALSE;
+              break;
             }
-            break;
-          }
+            case AEN_TEXTCHANGED:
+            {
+              // after the text is changed: updating the highlighting
+              if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
+              {
+                msgi.hWnd = pnmhdr->hwndFrom;
+                msgi.uMsg = WM_PAINT;
+                msgi.wParam = 0;
+                msgi.lParam = 0;
+
+                OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+              }
+              break;
+            }
 #if use_aen_paint
-          case AEN_PAINT:
-          {
-            if (nAenPaintWanted & 0x01)  // 0x01 - process AEN_PAINT
+            case AEN_PAINT:
             {
-              OnAenPaint( (AENPAINT *) lParam );
+              if (nAenPaintWanted & 0x01)  // 0x01 - process AEN_PAINT
+              {
+                OnAenPaint( (AENPAINT *) lParam );
+              }
+              break;
             }
-            break;
-          }
 #endif
+          }
         }
       }
     }
@@ -996,7 +1114,6 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       if (IsBracketsHighlight(uBracketsHighlight))
       {
-        MSGINFO    msgi;
         FRAMEDATA* lpFrame;
 
         lpFrame = (FRAMEDATA *) lParam;
@@ -1012,7 +1129,7 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         msgi.wParam = 0;
         msgi.lParam = 0;
 
-        OnEditGetActiveBrackets(&msgi, TRUE);
+        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
 
         // PMDI mode
         bOpeningNewDocument = FALSE;
@@ -1044,6 +1161,7 @@ void OnAenPaint(AENPAINT* p)
 void updatePluginData(PLUGINDATA* pd)
 {
   g_hMainWnd = pd->hMainWnd;
+  g_hInstanceDLL = pd->hInstanceDLL;
   g_nMDI = pd->nMDI;
   g_bMDI = (pd->nMDI == WMD_MDI);
   g_bOldWindows = pd->bOldWindows;
@@ -1096,7 +1214,7 @@ void Initialize(PLUGINDATA* pd)
     {
       MSGINFO msgi = { pd->hWndEdit, WM_PAINT, 0, 0 };
 
-      OnEditGetActiveBrackets(&msgi, TRUE);
+      OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
     }
 
     #ifdef _mad_verification_
@@ -1446,6 +1564,8 @@ void ReadOptions()
       ((opt_dwOptionsFlags0 & OPTF_VISIBLEAREA) == OPTF_VISIBLEAREA);
     bBracketsRightExistsOK =
       ((opt_dwOptionsFlags0 & OPTF_RIGHTBRACKETOK) == OPTF_RIGHTBRACKETOK);
+    bBracketsDoDoubleQuote =
+      ((opt_dwOptionsFlags0 & OPTF_DONOTDOUBLEQUOTE) != OPTF_DONOTDOUBLEQUOTE);
     bBracketsDoSingleQuote =
       ((opt_dwOptionsFlags0 & OPTF_DOSINGLEQUOTE) == OPTF_DOSINGLEQUOTE);
     bBracketsDoTag =
@@ -1458,6 +1578,12 @@ void ReadOptions()
       ((opt_dwOptionsFlags0 & OPTF_SKIPESCAPED) == OPTF_SKIPESCAPED);
     bBracketsSkipComment1 = 
       ((opt_dwOptionsFlags0 & OPTF_SKIPCOMMENT1) == OPTF_SKIPCOMMENT1);
+    bBracketsHighlightDoubleQuote = 
+      ((opt_dwOptionsFlags0 & OPTF_HLDOUBLEQUOTE) == OPTF_HLDOUBLEQUOTE);
+    bBracketsHighlightSingleQuote = 
+      ((opt_dwOptionsFlags0 & OPTF_HLSINGLEQUOTE) == OPTF_HLSINGLEQUOTE);
+    bBracketsHighlightTag = 
+      ((opt_dwOptionsFlags0 & OPTF_HLTAG) == OPTF_HLTAG);
   }
 
   if (opt_szNextCharOkW_0[0] != 0)
@@ -1573,6 +1699,8 @@ void SaveOptions()
     dwNewOptionsFlags |= OPTF_VISIBLEAREA;
   if (bBracketsRightExistsOK)
     dwNewOptionsFlags |= OPTF_RIGHTBRACKETOK;
+  if (!bBracketsDoDoubleQuote)
+    dwNewOptionsFlags |= OPTF_DONOTDOUBLEQUOTE;
   if (bBracketsDoSingleQuote)
     dwNewOptionsFlags |= OPTF_DOSINGLEQUOTE;
   if (bBracketsDoTag)
@@ -1585,6 +1713,12 @@ void SaveOptions()
     dwNewOptionsFlags |= OPTF_SKIPESCAPED;
   if (bBracketsSkipComment1) 
     dwNewOptionsFlags |= OPTF_SKIPCOMMENT1;
+  if (bBracketsHighlightDoubleQuote)
+    dwNewOptionsFlags |= OPTF_HLDOUBLEQUOTE;
+  if (bBracketsHighlightSingleQuote)
+    dwNewOptionsFlags |= OPTF_HLSINGLEQUOTE;
+  if (bBracketsHighlightTag)
+    dwNewOptionsFlags |= OPTF_HLTAG;
 
   nUpdatedOptions = 0;
   if (g_bOldWindows)

@@ -84,7 +84,7 @@ static const WCHAR* strBracketsW[tbtCount - 1] = {
 // variables
 INT_X IndexesHighlighted[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
 INT_X IndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
-INT_X prevIndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
+INT_X prevIndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 }; // "cached" indexes
 INT_X CurrentBracketsIndexes[2] = { -1, -1 };
 
 #define XBR_FONTSTYLE_UNDEFINED 0xF0F0F0FF
@@ -106,13 +106,14 @@ typedef struct sCharacterInfo {
 } tCharacterInfo;
 
 tCharacterInfo  hgltCharacterInfo[HIGHLIGHT_INDEXES];
-tCharacterInfo  prevCharacterInfo[HIGHLIGHT_INDEXES];
+tCharacterInfo  prevCharacterInfo[HIGHLIGHT_INDEXES]; // "cached" info
 
 int             nCurrentFileType = tftNone;
 int             nCurrentFileType2 = tfmNone;
 HWND            hCurrentEditWnd = NULL; // Can be NULL! Use hActualEditWnd.
 HWND            hActualEditWnd = NULL; //currentEdit;
 BOOL            bBracketsInternalRepaint = FALSE;
+extern BOOL     bAkelPadIsStarting;
 
 #if use_aen_paint
 UINT            nAenPaintWanted = 0x00;
@@ -131,10 +132,14 @@ extern BOOL     g_bAkelEdit;
 extern UINT     uBracketsHighlight;
 extern BOOL     bBracketsHighlightVisibleArea;
 extern BOOL     bBracketsRightExistsOK;
+extern BOOL     bBracketsDoDoubleQuote;
 extern BOOL     bBracketsDoSingleQuote;
 extern BOOL     bBracketsDoTag;
 extern BOOL     bBracketsDoTag2;
 extern BOOL     bBracketsDoTagIf;
+extern BOOL     bBracketsHighlightDoubleQuote;
+extern BOOL     bBracketsHighlightSingleQuote;
+extern BOOL     bBracketsHighlightTag;
 extern BOOL     bBracketsSkipEscaped;
 extern BOOL     bBracketsSkipComment1;
 extern COLORREF bracketsColourHighlight[2];
@@ -241,7 +246,8 @@ static void  getEscapedPrefixPos(const INT_X nOffset, INT_X* pnPos, INT* pnLen);
 static BOOL  isEscapedPrefixW(const wchar_t* strW, int len);
 static void  remove_duplicate_indexes_and_sort(INT_X* indexes, const INT size /* = HIGHLIGHT_INDEXES */);
 static BOOL  AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteMode);
-static BOOL  GetHighlightIndexes(const int nHighlightIndex, const INT_X nCharacterPosition, const CHARRANGE_X* pSelection);
+static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex, 
+                                 const INT_X nCharacterPosition, const CHARRANGE_X* pSelection);
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
 static BOOL  IsClearTypeEnabled();
 static void  CopyMemory1(void* dst, const void* src, unsigned int size);
@@ -290,7 +296,12 @@ static const char* getBracketsPairA(int nBracketType)
   return strUserBracketsA[nBracketType - tbtUser];
 }
 
-static int getLeftBracketType(const wchar_t wch)
+enum eBracketTypeFlags {
+    BTF_AUTOCOMPLETE = 0x01,
+    BTF_HIGHLIGHT    = 0x02
+};
+
+static int getLeftBracketType(const wchar_t wch, const unsigned int uFlags)
 {
   int nLeftBracketType = tbtNone;
 
@@ -305,45 +316,46 @@ static int getLeftBracketType(const wchar_t wch)
     case L'{' :
       nLeftBracketType = tbtBrace;
       break;
-    case L'\"' :
-      nLeftBracketType = tbtDblQuote;
-      break;
     case L'<' :
-      if (bBracketsDoTag)
+      if (bBracketsDoTag || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
         nLeftBracketType = tbtTag;
       break;
-    case L'\'' :
-      if (bBracketsDoSingleQuote)
-      {
-        nLeftBracketType = tbtSglQuote;
-        break;
-      } // otherwise go to default (no break here)
-    default :
-      if (wch != 0)
-      {
-        int i = 0;
-        while (i < MAX_USER_BRACKETS)
-        {
-          if (strUserBracketsW[i][0] == wch)
-          {
-            nLeftBracketType = tbtUser + i;
-            i = MAX_USER_BRACKETS; // break condition
-          }
-          else if (strUserBracketsW[i][0] == 0)
-          {
-            i = MAX_USER_BRACKETS; // break condition
-          }
-          else
-            ++i;
-        }
-      }
+    case L'\"' :
+      if (bBracketsDoDoubleQuote || (bBracketsHighlightDoubleQuote && (uFlags & BTF_HIGHLIGHT)))
+        nLeftBracketType = tbtDblQuote;
       break;
+    case L'\'' :
+      if (bBracketsDoSingleQuote || (bBracketsHighlightSingleQuote && (uFlags & BTF_HIGHLIGHT)))
+        nLeftBracketType = tbtSglQuote;
+      break;
+  }
+
+  if (nLeftBracketType == tbtNone)
+  {
+    if (wch != 0)
+    {
+      int i = 0;
+      while (i < MAX_USER_BRACKETS)
+      {
+        if (strUserBracketsW[i][0] == wch)
+        {
+          nLeftBracketType = tbtUser + i;
+          i = MAX_USER_BRACKETS; // break condition
+        }
+        else if (strUserBracketsW[i][0] == 0)
+        {
+          i = MAX_USER_BRACKETS; // break condition
+        }
+        else
+          ++i;
+      }
+    }
   }
 
   return nLeftBracketType;
 }
 
-static int getRightBracketType(const wchar_t wch)
+static int getRightBracketType(const wchar_t wch, const unsigned int uFlags)
 {
   int nRightBracketType = tbtNone;
 
@@ -358,43 +370,44 @@ static int getRightBracketType(const wchar_t wch)
     case L'}' :
       nRightBracketType = tbtBrace;
       break;
-    case L'\"' :
-      nRightBracketType = tbtDblQuote;
-      break;
     case L'>' :
-      if (bBracketsDoTag)
+      if (bBracketsDoTag || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
         nRightBracketType = tbtTag; 
       // no break here
     case L'/' :
-      if (bBracketsDoTag2)
+      if (bBracketsDoTag2 || (bBracketsHighlightTag && (uFlags & BTF_HIGHLIGHT)))
         nRightBracketType = tbtTag2;
       break;
-    case L'\'' :
-      if (bBracketsDoSingleQuote)
-      {
-        nRightBracketType = tbtSglQuote;
-        break;
-      } // otherwise go to default (no break here)
-    default :
-      if (wch != 0)
-      {
-        int i = 0;
-        while (i < MAX_USER_BRACKETS)
-        {
-          if (strUserBracketsW[i][1] == wch)
-          {
-            nRightBracketType = tbtUser + i;
-            i = MAX_USER_BRACKETS; // break condition
-          }
-          else if (strUserBracketsW[i][1] == 0)
-          {
-            i = MAX_USER_BRACKETS; // break condition
-          }
-          else
-            ++i;
-        }
-      }
+    case L'\"' :
+      if (bBracketsDoDoubleQuote || (bBracketsHighlightDoubleQuote && (uFlags & BTF_HIGHLIGHT)))
+        nRightBracketType = tbtDblQuote;
       break;
+    case L'\'' :
+      if (bBracketsDoSingleQuote || (bBracketsHighlightSingleQuote && (uFlags & BTF_HIGHLIGHT)))
+        nRightBracketType = tbtSglQuote;
+      break;
+  }
+
+  if (nRightBracketType == tbtNone)
+  {
+    if (wch != 0)
+    {
+      int i = 0;
+      while (i < MAX_USER_BRACKETS)
+      {
+        if (strUserBracketsW[i][1] == wch)
+        {
+          nRightBracketType = tbtUser + i;
+          i = MAX_USER_BRACKETS; // break condition
+        }
+        else if (strUserBracketsW[i][1] == 0)
+        {
+          i = MAX_USER_BRACKETS; // break condition
+        }
+        else
+          ++i;
+      }
+    }
   }
 
   return nRightBracketType;
@@ -496,9 +509,9 @@ void OnEditCharPressed(MSGINFO* pmsgi)
         next_wch = AnyRichEdit_GetCharAtW(pmsgi->hWnd, nEditPos);
       }
 
-      if (getRightBracketType(next_wch) == nAutoRightBracketType)
+      if (getRightBracketType(next_wch, BTF_AUTOCOMPLETE) == nAutoRightBracketType)
       {
-        if (getRightBracketType(wch) == nAutoRightBracketType)
+        if (getRightBracketType(wch, BTF_AUTOCOMPLETE) == nAutoRightBracketType)
         {
           // annul pressed character
           pmsgi->wParam = 0;
@@ -533,7 +546,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
     }
   }
 
-  nBracketType = getLeftBracketType(wch);
+  nBracketType = getLeftBracketType(wch, BTF_AUTOCOMPLETE);
   if (nBracketType != tbtNone)
   {
     // a typed character is a bracket
@@ -553,7 +566,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
   }
 }
 
-void OnEditGetActiveBrackets(MSGINFO* pmsgi, const BOOL bAndHighlight)
+void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
 {
   INT         i;
   BOOL        bHighlighted;
@@ -561,7 +574,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const BOOL bAndHighlight)
   INT_X       nEditEndPos;
   CHARRANGE_X crSelection;
 
-  if (bBracketsInternalRepaint)
+  if (bBracketsInternalRepaint || bAkelPadIsStarting)
     return;
   
   if (!pmsgi->hWnd)
@@ -618,23 +631,23 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const BOOL bAndHighlight)
     CharacterInfo_ClearAll(hgltCharacterInfo);
   }
 
-  if (GetHighlightIndexes(0, nEditEndPos-1, &crSelection)) // left character
+  if (GetHighlightIndexes(uFlags, 0, nEditEndPos-1, &crSelection)) // left character
     bHighlighted = TRUE;
 
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_BOTHBR] || !bHighlighted)
   {
-    if (GetHighlightIndexes(3, nEditEndPos, &crSelection))   // right character
+    if (GetHighlightIndexes(uFlags, 3, nEditEndPos, &crSelection))   // right character
       bHighlighted = TRUE;
   }
 
   if ((!bHighlighted) && (nEditEndPos != nEditPos))
   {
-    if (GetHighlightIndexes(0, nEditPos-1, &crSelection)) // left character
+    if (GetHighlightIndexes(uFlags, 0, nEditPos-1, &crSelection)) // left character
       bHighlighted = TRUE;
 
     if (g_dwOptions[OPT_DWORD_HIGHLIGHT_HLT_BOTHBR] || !bHighlighted)
     {
-      if (GetHighlightIndexes(3, nEditPos, &crSelection))   // right character
+      if (GetHighlightIndexes(uFlags, 3, nEditPos, &crSelection))   // right character
         bHighlighted = TRUE;
     }
   }
@@ -653,7 +666,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const BOOL bAndHighlight)
     }
   }
   
-  if (bAndHighlight)
+  if (uFlags & XBR_GBF_HIGHLIGHTBR)
   {
     // highlight
     OnEditHighlightActiveBrackets();
@@ -668,7 +681,7 @@ void OnEditHighlightActiveBrackets(void)
   INT_X index;
   INT_X indexesToRemoveHighlight[HIGHLIGHT_INDEXES];
 
-  if (bBracketsInternalRepaint)
+  if (bBracketsInternalRepaint || bAkelPadIsStarting)
     return;
 
   uHighlightFlags = HF_UNINITIALIZED;
@@ -887,7 +900,7 @@ void OnEditHighlightActiveBrackets(void)
   if ((g_dwOptions[OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR] & 0x01) ||
       isSepOrOneOfW(next_wch, strNextCharOkW))
   {
-    int nBrType = getRightBracketType(next_wch);
+    int nBrType = getRightBracketType(next_wch, BTF_AUTOCOMPLETE);
     if (nBrType == tbtNone)
     {
       bNextCharOK = TRUE;
@@ -948,7 +961,7 @@ void OnEditHighlightActiveBrackets(void)
     if ((g_dwOptions[OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR] & 0x02) ||
         isSepOrOneOfW(prev_wch, strPrevCharOkW))
     {
-      int nBrType = getLeftBracketType(prev_wch);
+      int nBrType = getLeftBracketType(prev_wch, BTF_AUTOCOMPLETE);
       if (nBrType == tbtNone)
       {
         bPrevCharOK = TRUE;
@@ -1741,7 +1754,8 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   return cookie.nResult;
 }
 
-/*static*/ BOOL GetHighlightIndexes(const int nHighlightIndex, const INT_X nCharacterPosition, const CHARRANGE_X* pSelection)
+/*static*/ BOOL GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex, 
+                                    const INT_X nCharacterPosition, const CHARRANGE_X* pSelection)
 {
   int   nBracketType;
   int   nDuplicatedPairDirection; // left bracket is the same as right
@@ -1793,8 +1807,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           pchd = CharacterInfo_GetHighlightData(prevCharacterInfo, ind1);
           if (pchd)
           {
-            if ((pchd->dwState & XBR_STATEFLAG_DONOTHL) ||
-                ((pchd->dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(ind1, pSelection)))
+            if ((!(uFlags & XBR_GBF_UPDATEHLDATA)) &&
+                ((pchd->dwState & XBR_STATEFLAG_DONOTHL) ||
+                 ((pchd->dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(ind1, pSelection))))
             {
               CharacterInfo_Add(hgltCharacterInfo, ind1, pchd);
             }
@@ -1810,8 +1825,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           pchd = CharacterInfo_GetHighlightData(prevCharacterInfo, ind2);
           if (pchd)
           {
-            if ((pchd->dwState & XBR_STATEFLAG_DONOTHL) ||
-                ((pchd->dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(ind2, pSelection)))
+            if ((!(uFlags & XBR_GBF_UPDATEHLDATA)) &&
+                ((pchd->dwState & XBR_STATEFLAG_DONOTHL) ||
+                 ((pchd->dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(ind2, pSelection))))
             {
               CharacterInfo_Add(hgltCharacterInfo, ind2, pchd);
             }
@@ -1827,8 +1843,9 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
           pchd = CharacterInfo_GetHighlightData(prevCharacterInfo, ind3);
           if (pchd)
           {
-            if ((pchd->dwState & XBR_STATEFLAG_DONOTHL) ||
-                ((pchd->dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(ind3, pSelection)))
+            if ((!(uFlags & XBR_GBF_UPDATEHLDATA)) &&
+                ((pchd->dwState & XBR_STATEFLAG_DONOTHL) ||
+                 ((pchd->dwState & XBR_STATEFLAG_INSELECTION) == GetInSelectionState(ind3, pSelection))))
             {
               CharacterInfo_Add(hgltCharacterInfo, ind3, pchd);
             }
@@ -1861,11 +1878,11 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   nDuplicatedPairDirection = DP_NONE;
   nGetHighlightResult = ghlrNone;
   bRightBracket = FALSE;
-  nBracketType = getLeftBracketType(wch);
+  nBracketType = getLeftBracketType(wch, BTF_HIGHLIGHT);
   if (nBracketType == tbtNone)
   {
     bRightBracket = TRUE;
-    nBracketType = getRightBracketType(wch);
+    nBracketType = getRightBracketType(wch, BTF_HIGHLIGHT);
     if (nBracketType != tbtNone)
     {
       if (nBracketType == tbtTag2)
@@ -2917,7 +2934,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 {
   int i;
 
-  if (bBracketsInternalRepaint)
+  if (bBracketsInternalRepaint || bAkelPadIsStarting)
     return;
   
   for (i = 0; i < HIGHLIGHT_INDEXES; i++)
