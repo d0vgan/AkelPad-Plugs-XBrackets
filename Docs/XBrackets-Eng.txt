@@ -179,6 +179,10 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.6.8 (December 2015)
+ * AkelPad 4.9.7+
+ + supports '\0' symbol inside of AEM_GETWORDDELIMITERS string
+
 v.6.7 (September 2015)
  + now Go/SelToMatchingBracket automatically calls XBrackets::Main
    if it is not already running
@@ -412,7 +416,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Sep 2015, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Dec 2015, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);

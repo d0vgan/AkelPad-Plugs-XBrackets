@@ -20,7 +20,7 @@
 
 #define AKEL_DLL_VERSION    AKELDLL
 #define EXE_MIN_VERSION_3X  MAKE_IDENTIFIER(-1, -1, -1, -1)
-#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 9, 1, 0)
+#define EXE_MIN_VERSION_4X  MAKE_IDENTIFIER(4, 9, 7, 0)
 #define PLUGIN_NAME         "XBrackets"
 
 
@@ -945,7 +945,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       bOpeningNewDocument = FALSE;
       bDocumentJustOpened = TRUE;
-      hDocumentJustOpenedWnd = (HWND) wParam;
+      hDocumentJustOpenedWnd = ((FRAMEDATA *)wParam)->ei.hWndEdit;
       /*if (IsBracketsHighlight(uBracketsHighlight))
       {
         MSGINFO msgi = { (HWND) wParam, WM_PAINT, 0, 0 };

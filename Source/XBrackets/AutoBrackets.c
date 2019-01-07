@@ -105,6 +105,12 @@ typedef struct sCharacterInfo {
     tCharacterHighlightData chd;
 } tCharacterInfo;
 
+typedef struct sStringWrapperW {
+    wchar_t* pszStringW;
+    int nSize; // size of a string buffer pointed by pszStringW, in characters
+    int nLen;  // current length of a string, in characters
+} tStringWrapperW;
+
 tCharacterInfo  hgltCharacterInfo[HIGHLIGHT_INDEXES];
 tCharacterInfo  prevCharacterInfo[HIGHLIGHT_INDEXES]; // "cached" info
 
@@ -154,9 +160,27 @@ extern DWORD    g_dwOptions[OPT_DWORD_COUNT];
 
 wchar_t         strUserBracketsW[MAX_USER_BRACKETS + 1][4];
 char            strUserBracketsA[MAX_USER_BRACKETS + 1][4];
-wchar_t         strNextCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE];
-wchar_t         strPrevCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE];
+wchar_t         strNextCharOkW__[MAX_PREV_NEXT_CHAR_OK_SIZE];
+wchar_t         strPrevCharOkW__[MAX_PREV_NEXT_CHAR_OK_SIZE];
+tStringWrapperW nextCharOkW = { strNextCharOkW__, MAX_PREV_NEXT_CHAR_OK_SIZE, 0 };
+tStringWrapperW prevCharOkW = { strPrevCharOkW__, MAX_PREV_NEXT_CHAR_OK_SIZE, 0 };
 
+
+// tStringWrapperW useful functions
+static int tStringWrapperW_FindCh(const tStringWrapperW* pSelf, const wchar_t wch)
+{
+    const wchar_t* p;
+    const wchar_t* pEnd;
+
+    p = pSelf->pszStringW;
+    pEnd = p + pSelf->nLen;
+    for ( ; p < pEnd; ++p )
+    {
+        if ( *p == wch )
+            return 1;
+    }
+    return 0;
+}
 
 // CharacterHighlightData useful functions
 static void CharacterHighlightData_Clear(tCharacterHighlightData* chd)
@@ -414,7 +438,24 @@ static int getRightBracketType(const wchar_t wch, const unsigned int uFlags)
   return nRightBracketType;
 }
 
-static BOOL isSepOrOneOfW(const wchar_t wch, const wchar_t* pwszChars)
+// word delimiters may contain '\0' character
+static void AemGetWordDelimiters(HWND hWndEdit, tStringWrapperW* pWordDelimiters)
+{
+    wchar_t* pszDelimitersW;
+    int nLen;
+
+    pszDelimitersW = pWordDelimiters->pszStringW;
+    pszDelimitersW[0] = 0;
+    nLen = (int) SendMessage( hWndEdit, AEM_GETWORDDELIMITERS, pWordDelimiters->nSize - 1, (LPARAM) pszDelimitersW );
+    if ( (nLen > 0) && (pszDelimitersW[nLen - 1] == 0) )
+        --nLen; // skip 2nd trailing '\0' if present
+    if ( (nLen > 0) && (pszDelimitersW[nLen - 1] == 0) )
+        --nLen; // skip 1st trailing '\0' if present
+    pWordDelimiters->nLen = nLen;
+}
+
+// word delimiters may contain '\0' character
+static BOOL isSepOrOneOfW(const wchar_t wch, const tStringWrapperW* pChars)
 {
   switch (wch)
   {
@@ -425,11 +466,8 @@ static BOOL isSepOrOneOfW(const wchar_t wch, const wchar_t* pwszChars)
     case L'\t' :
       return TRUE;
     default:
-      while (*pwszChars)
       {
-        if (*pwszChars != wch)
-          ++pwszChars;
-        else
+        if (tStringWrapperW_FindCh(pChars, wch))
           return TRUE;
       }
   }
@@ -899,7 +937,7 @@ void OnEditHighlightActiveBrackets(void)
   #endif
 
   if ((g_dwOptions[OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR] & 0x01) ||
-      isSepOrOneOfW(next_wch, strNextCharOkW))
+      isSepOrOneOfW(next_wch, &nextCharOkW))
   {
     int nBrType = getRightBracketType(next_wch, BTF_AUTOCOMPLETE);
     if (nBrType == tbtNone)
@@ -960,7 +998,7 @@ void OnEditHighlightActiveBrackets(void)
     #endif
 
     if ((g_dwOptions[OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR] & 0x02) ||
-        isSepOrOneOfW(prev_wch, strPrevCharOkW))
+        isSepOrOneOfW(prev_wch, &prevCharOkW))
     {
       int nBrType = getLeftBracketType(prev_wch, BTF_AUTOCOMPLETE);
       if (nBrType == tbtNone)
@@ -1154,7 +1192,8 @@ static BOOL isSentenceEndChar(const wchar_t wch)
 static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wchar_t curr_wch)
 {
   static HWND hLocalEditWnd = NULL;
-  static WCHAR szLocalDelimitersW[128] = { 0 };
+  static wchar_t szWordDelimitersW[128] = { 0 };
+  static tStringWrapperW wordDelimiters = { szWordDelimitersW, 128, 0 };
   WCHAR prev_wch;
   WCHAR next_wch;
 
@@ -1190,8 +1229,7 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
 
   if ( hLocalEditWnd != hActualEditWnd )
   {
-    szLocalDelimitersW[0] = 0;
-    SendMessage( hActualEditWnd, AEM_GETWORDDELIMITERS, 127, (LPARAM) szLocalDelimitersW );
+    AemGetWordDelimiters(hActualEditWnd, &wordDelimiters);
     hLocalEditWnd = hActualEditWnd;
   }
 
@@ -1199,20 +1237,20 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
       prev_wch == '\n')
   {
     // previous char is EOL, search forward
-    return isSepOrOneOfW(next_wch, szLocalDelimitersW) ? DP_MAYBEFORWARD : DP_FORWARD;
+    return isSepOrOneOfW(next_wch, &wordDelimiters) ? DP_MAYBEFORWARD : DP_FORWARD;
   }
 
   if (next_wch == '\r' || 
       next_wch == '\n')
   {
     // next char is EOL, search backward
-    return isSepOrOneOfW(prev_wch, szLocalDelimitersW) ? DP_MAYBEBACKWARD : DP_BACKWARD;
+    return isSepOrOneOfW(prev_wch, &wordDelimiters) ? DP_MAYBEBACKWARD : DP_BACKWARD;
   }
 
-  if (isSepOrOneOfW(prev_wch, szLocalDelimitersW))
+  if (isSepOrOneOfW(prev_wch, &wordDelimiters))
   {
     // previous char is a separator
-    if (!isSepOrOneOfW(next_wch, szLocalDelimitersW))
+    if (!isSepOrOneOfW(next_wch, &wordDelimiters))
       return DP_FORWARD; // next char is not a separator, search forward
 
     if (isSentenceEndChar(prev_wch))
@@ -1221,10 +1259,10 @@ static int getDuplicatedPairDirection(const INT_X nCharacterPosition, const wcha
         return DP_MAYBEBACKWARD;
     }
   }
-  else if (isSepOrOneOfW(next_wch, szLocalDelimitersW))
+  else if (isSepOrOneOfW(next_wch, &wordDelimiters))
   {
     // next char is a separator
-    if (!isSepOrOneOfW(prev_wch, szLocalDelimitersW))
+    if (!isSepOrOneOfW(prev_wch, &wordDelimiters))
       return DP_BACKWARD; // previous char is not a separator, search backward
 
     if (isSentenceEndChar(prev_wch))
@@ -3643,9 +3681,13 @@ void AutoBrackets_Uninitialize(void)
   CurrentBracketsIndexes[1] = -1;
 }
 
-static void copyUniqueCharsOkW(wchar_t* pDst, const wchar_t* pSrc)
+static void copyUniqueCharsOkW(tStringWrapperW* pDst, const wchar_t* pSrc)
 {
-  int n = 0;
+  wchar_t* pDstStr;
+  int n;
+
+  pDstStr = pDst->pszStringW;
+  n = 0;
 
   if (pSrc)
   {
@@ -3660,13 +3702,13 @@ static void copyUniqueCharsOkW(wchar_t* pDst, const wchar_t* pSrc)
           (wch != L'\x0A'))
       {
         i = 0;
-        while ((i < n) && (pDst[i] != wch))
+        while ((i < n) && (pDstStr[i] != wch))
         {
           ++i;
         }
         if (i == n)
         {
-          pDst[n] = wch;
+          pDstStr[n] = wch;
           ++n;
         }
       }
@@ -3674,17 +3716,18 @@ static void copyUniqueCharsOkW(wchar_t* pDst, const wchar_t* pSrc)
     }
   }
 
-  pDst[n] = 0;
+  pDstStr[n] = 0;
+  pDst->nLen = n;
 }
 
 void setNextCharOkW(const wchar_t* cszNextCharOkW)
 {
-  copyUniqueCharsOkW(strNextCharOkW, cszNextCharOkW);
+  copyUniqueCharsOkW(&nextCharOkW, cszNextCharOkW);
 }
 
 void setPrevCharOkW(const wchar_t* cszPrevCharOkW)
 {
-  copyUniqueCharsOkW(strPrevCharOkW, cszPrevCharOkW);
+  copyUniqueCharsOkW(&prevCharOkW, cszPrevCharOkW);
 }
 
 void setUserBracketsA(const char* cszUserBracketsA)

@@ -222,6 +222,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="comctl32.lib"
 				OutputFile="$(OutDir)/XBrackets.dll"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
@@ -299,6 +300,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="comctl32.lib"
 				OutputFile="$(OutDir)/XBrackets.dll"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
