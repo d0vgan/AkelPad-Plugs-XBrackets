@@ -1,4 +1,12 @@
-﻿May 2015
+﻿Jul 2016
+--------
++ теперь XBrackets (как и QSearch) собирается с ключами /GS- и /NODEFAULTLIB .
+  Также явно указан /ENTRY:DllMain .
+  В местах, где компилятор хочет вызвать memset и memcpy, используются функции
+  из XMemStrFunc.c, замещающие стандартные memset и memcpy.
+
+
+May 2015
 --------
 + теперь XBrackets учитывает AELB_WRAP, работая с перенесенными
   (wrapped) строками.

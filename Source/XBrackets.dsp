@@ -161,6 +161,10 @@ SOURCE=.\XBrackets\c_base\types.h
 
 SOURCE=.\XBrackets\XBracketsLng.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\XBrackets\XMemStrFunc.c
+# End Source File
 # End Group
 # Begin Group "Resource Files"
 

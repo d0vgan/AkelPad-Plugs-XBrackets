@@ -4,6 +4,7 @@
 #include "c_base/types.h"
 #include "Plugin.h"
 #include "XBracketsLng.h"
+#include "XMemStrFunc.h"
 #include <commctrl.h>
 
 extern HWND        g_hMainWnd;
@@ -264,10 +265,7 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
   HWND      hWndButton;
   int       i;
 
-  for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
-  {
-    localCustomColoursHighlight[i] = g_CustomColoursHighlight[i];
-  }
+  x_mem_cpy(localCustomColoursHighlight, g_CustomColoursHighlight, sizeof(g_CustomColoursHighlight));
 
   switch (uButtonID)
   {
@@ -291,7 +289,9 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
 
     if (g_bOldWindows)
     {
-      CHOOSECOLORA ccA = { 0 };
+      CHOOSECOLORA ccA;
+
+      x_zero_mem(&ccA, sizeof(CHOOSECOLORA));
 
       ccA.lStructSize  = sizeof(CHOOSECOLORA);
       ccA.hwndOwner    = hDlg;
@@ -307,7 +307,9 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
     }
     else
     {
-      CHOOSECOLORW ccW = { 0 };
+      CHOOSECOLORW ccW;
+
+      x_zero_mem(&ccW, sizeof(CHOOSECOLORW));
 
       ccW.lStructSize  = sizeof(CHOOSECOLORW);
       ccW.hwndOwner    = hDlg;
@@ -324,10 +326,7 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
 
     if (i != 0)
     {
-      for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
-      {
-        g_CustomColoursHighlight[i] = localCustomColoursHighlight[i];
-      }
+      x_mem_cpy(g_CustomColoursHighlight, localCustomColoursHighlight, sizeof(localCustomColoursHighlight));
 
       InvalidateRect(hWndButton, NULL, FALSE);
     }

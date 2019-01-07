@@ -1,6 +1,7 @@
 #define AEC_FUNCTIONS
 #include "AutoBrackets.h"
 #include "Plugin.h"
+#include "XMemStrFunc.h"
 
 
 // ClearType definitions... >>>
@@ -693,10 +694,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
 
   if (bHighlighted)
   {
-    for (i = 0; i < HIGHLIGHT_INDEXES; i++)
-    {
-      prevIndexesToHighlight[i] = IndexesToHighlight[i];
-    }
+    x_mem_cpy(prevIndexesToHighlight, IndexesToHighlight, sizeof(IndexesToHighlight));
     remove_duplicate_indexes_and_sort(IndexesToHighlight, HIGHLIGHT_INDEXES);
 
     if (g_bAkelEdit)

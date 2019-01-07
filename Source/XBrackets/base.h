@@ -13,6 +13,12 @@
 #include <windows.h>
 #include <TCHAR.H>
 
+#ifdef _WIN64
+  #ifndef AKELPAD_X64
+    #define AKELPAD_X64
+  #endif
+#endif
+
 // this definition enables or disables 
 // additional Unicode functions for controls
 // 1 - on, 0 - off

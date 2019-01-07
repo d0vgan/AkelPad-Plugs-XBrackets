@@ -5,6 +5,7 @@
 #include <richedit.h>
 #include "c_base/types.h"
 #include "Plugin.h"
+#include "XMemStrFunc.h"
 
 //#define _mad_verification_
 #undef _mad_verification_
@@ -1515,10 +1516,7 @@ void ReadOptions()
 
   }
 
-  for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
-  {
-    g_CustomColoursHighlight_0[i] = g_CustomColoursHighlight[i];
-  }
+  x_mem_cpy(g_CustomColoursHighlight_0, g_CustomColoursHighlight, sizeof(g_CustomColoursHighlight));
 
   // opt_dwOptionsFlags0 value has been set before
   if (opt_dwOptionsFlags0 != OPT_UNDEFINED_DWORD)
@@ -1783,10 +1781,7 @@ void SaveOptions()
           poA.dwData = MAX_CUSTOM_COLOURS*sizeof(COLORREF);
           poA.dwType = PO_BINARY;
           SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
-          for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
-          {
-            g_CustomColoursHighlight_0[i] = g_CustomColoursHighlight[i];
-          }
+          x_mem_cpy(g_CustomColoursHighlight_0, g_CustomColoursHighlight, sizeof(g_CustomColoursHighlight));
         }
         if (nUpdatedOptions & fStrHtmlExts)
         {
@@ -1896,10 +1891,7 @@ void SaveOptions()
           poW.dwData = MAX_CUSTOM_COLOURS*sizeof(COLORREF);
           poW.dwType = PO_BINARY;
           SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
-          for (i = 0; i < MAX_CUSTOM_COLOURS; i++)
-          {
-            g_CustomColoursHighlight_0[i] = g_CustomColoursHighlight[i];
-          }
+          x_mem_cpy(g_CustomColoursHighlight_0, g_CustomColoursHighlight, sizeof(g_CustomColoursHighlight));
         }
         if (nUpdatedOptions & fStrHtmlExts)
         {

@@ -1,7 +1,7 @@
 [Project]
 FileName=XBrackets.dev
 Name=XBrackets
-UnitCount=17
+UnitCount=19
 Type=3
 Ver=1
 IsCpp=1
@@ -195,6 +195,26 @@ CompileCpp=0
 
 [Unit17]
 FileName=XBrackets\XBracketsLng.h
+CompileCpp=0
+Folder=XBrackets
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit18]
+FileName=XBrackets\XMemStrFunc.c
+CompileCpp=0
+Folder=XBrackets
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit19]
+FileName=XBrackets\XMemStrFunc.h
 CompileCpp=0
 Folder=XBrackets
 Compile=1

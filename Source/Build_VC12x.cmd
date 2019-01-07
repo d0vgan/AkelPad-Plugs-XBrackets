@@ -1,17 +1,17 @@
-REM Visual Studio 8.0 (2005) Express
+REM Visual Studio 12.0 (2013) Express
 
 @ECHO OFF
 Set SdkProgramFiles=%ProgramFiles%
 if "%ProgramFiles(x86)%" == "" goto programfiles_ok
 Set ProgramFiles=%ProgramFiles(x86)%
 :programfiles_ok
-Set VCDIR=%ProgramFiles%\Microsoft Visual Studio 8\VC
-Set VSCOMMON=%ProgramFiles%\Microsoft Visual Studio 8\Common7\IDE
-Set MSSDK=%SdkProgramFiles%\Microsoft Platform SDK for Windows Server 2003 R2
+Set VCDIR=%ProgramFiles%\Microsoft Visual Studio 12.0\VC
+Set VSCOMMON=%ProgramFiles%\Microsoft Visual Studio 12.0\Common7\IDE
+Set MSSDK=%ProgramFiles%\Microsoft SDKs\Windows\v7.1A
 
-if exist "%MSSDK%" goto sdk_ok
-Set MSSDK=%VCDIR%\PlatformSDK
-:sdk_ok
+REM if exist "%MSSDK%" goto sdk_ok
+REM Set MSSDK=%VCDIR%\PlatformSDK
+REM :sdk_ok
 
 ::###################################::
 Set PATH=%VCDIR%\bin;%MSSDK%\bin;%VSCOMMON%;%PATH%
@@ -21,7 +21,7 @@ Set LIB=%MSSDK%\lib;%VCDIR%\lib;%LIB%
 cd .\XBrackets
 
 rc /r /Fo"XBrackets.res" "XBrackets.rc"
-cl /O1 /GS- AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XMemStrFunc.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /NODEFAULTLIB /ENTRY:DllMain /OUT:..\..\Plugs\XBrackets.dll
+cl /O1 /GS- AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XMemStrFunc.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /NODEFAULTLIB /ENTRY:DllMain /OUT:..\..\Plugs\XBrackets.dll
 
 if exist XBrackets.res del XBrackets.res
 if exist AutoBrackets.lib del AutoBrackets.lib

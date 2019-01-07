@@ -1,13 +1,13 @@
 REM Visual Studio 9.0 (2008) Express
 
 @ECHO OFF
-Set ProgramFiles0=%ProgramFiles%
+Set SdkProgramFiles=%ProgramFiles%
 if "%ProgramFiles(x86)%" == "" goto programfiles_ok
 Set ProgramFiles=%ProgramFiles(x86)%
 :programfiles_ok
 Set VCDIR=%ProgramFiles%\Microsoft Visual Studio 9.0\VC
 Set VSCOMMON=%ProgramFiles%\Microsoft Visual Studio 9.0\Common7\IDE
-Set MSSDK=%ProgramFiles0%\Microsoft SDKs\Windows\v6.0A
+Set MSSDK=%SdkProgramFiles%\Microsoft SDKs\Windows\v6.0A
 
 REM if exist "%MSSDK%" goto sdk_ok
 REM Set MSSDK=%VCDIR%\PlatformSDK
@@ -21,7 +21,7 @@ Set LIB=%MSSDK%\lib;%VCDIR%\lib;%LIB%
 cd .\XBrackets
 
 rc /r /Fo"XBrackets.res" "XBrackets.rc"
-cl /O1 AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /ENTRY:DllMain /OUT:..\..\Plugs\XBrackets.dll
+cl /O1 /GS- AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XMemStrFunc.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /NODEFAULTLIB /ENTRY:DllMain /OUT:..\..\Plugs\XBrackets.dll
 
 if exist XBrackets.res del XBrackets.res
 if exist AutoBrackets.lib del AutoBrackets.lib
@@ -33,4 +33,5 @@ if exist HexStr.obj del HexStr.obj
 if exist Plugin.obj del Plugin.obj
 if exist SettingsDlg.obj del SettingsDlg.obj
 if exist XBracketsLng.obj del XBracketsLng.obj
+if exist XMemStrFunc.obj del XMemStrFunc.obj
 @PAUSE

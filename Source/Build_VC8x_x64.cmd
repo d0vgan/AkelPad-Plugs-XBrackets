@@ -1,12 +1,13 @@
 REM Visual Studio 8.0 (2005) Express
 
 @ECHO OFF
+Set SdkProgramFiles=%ProgramFiles%
 if "%ProgramFiles(x86)%" == "" goto programfiles_ok
 Set ProgramFiles=%ProgramFiles(x86)%
 :programfiles_ok
 Set VCDIR=%ProgramFiles%\Microsoft Visual Studio 8\VC
 Set VSCOMMON=%ProgramFiles%\Microsoft Visual Studio 8\Common7\IDE
-Set MSSDK=%ProgramFiles%\Microsoft Platform SDK for Windows Server 2003 R2
+Set MSSDK=%SdkProgramFiles%\Microsoft Platform SDK for Windows Server 2003 R2
 
 if exist "%MSSDK%" goto sdk_ok
 Set MSSDK=%VCDIR%\PlatformSDK
@@ -24,7 +25,7 @@ set MACHINE=AMD64
 cd .\XBrackets
 
 rc /R /DRC_VERSIONBIT=%BIT% /Fo"XBrackets.res" "XBrackets.rc"
-cl /O1 %CLFLAGS% /D "AKELPAD_X64" AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /ENTRY:DllMain /OUT:..\..\Plugs64\XBrackets.dll
+cl /O1 /GS- %CLFLAGS% /D "AKELPAD_X64" AutoBrackets.c Plugin.c AnyRichEdit.c AnyWindow.c SettingsDlg.c XBracketsLng.c XMemStrFunc.c XBrackets.res /LD /link kernel32.lib user32.lib comctl32.lib gdi32.lib Comdlg32.lib /OPT:NOWIN98 /MACHINE:%MACHINE% /NODEFAULTLIB /ENTRY:DllMain /OUT:..\..\Plugs64\XBrackets.dll
 
 if exist XBrackets.res del XBrackets.res
 if exist AutoBrackets.lib del AutoBrackets.lib
@@ -36,4 +37,5 @@ if exist HexStr.obj del HexStr.obj
 if exist Plugin.obj del Plugin.obj
 if exist SettingsDlg.obj del SettingsDlg.obj
 if exist XBracketsLng.obj del XBracketsLng.obj
+if exist XMemStrFunc.obj del XMemStrFunc.obj
 @PAUSE
