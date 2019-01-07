@@ -275,7 +275,7 @@ static BOOL  AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteM
 static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlightIndex, 
                                  const INT_X nCharacterPosition, const CHARRANGE_X* pSelection);
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
-static BOOL  IsClearTypeEnabled();
+static BOOL  IsClearTypeEnabled(void);
 static void  CopyMemory1(void* dst, const void* src, unsigned int size);
 
 enum eHighlightFlags {
@@ -771,6 +771,102 @@ void OnEditHighlightActiveBrackets(void)
 
 }
 
+static BOOL IsEnclosedInBracketsW(const wchar_t* pszTextLeftW, const wchar_t* pszTextRightW, int* pnBracketType, BOOL bInSelection)
+{
+  const wchar_t* pszBrPairW;
+  int  nBrType;
+  BOOL bRet;
+
+  bRet = FALSE;
+  nBrType = *pnBracketType;
+  pszBrPairW = getBracketsPairW(nBrType);
+
+  if (pszTextLeftW[0] != pszBrPairW[0])
+    return bRet;
+
+  if ((pszTextRightW[0] == pszBrPairW[1]) &&
+      (pszBrPairW[2] == 0 || pszTextRightW[1] == pszBrPairW[2]))
+  {
+    bRet = TRUE;
+    if (nBrType != tbtTag)
+      return bRet;
+  }
+
+  if (nBrType == tbtTag)
+  {
+    nBrType = tbtTag2;
+    if (bInSelection)
+      --pszTextRightW; // '/' is present in "/>"
+  }
+  else if (nBrType == tbtTag2)
+  {
+    nBrType = tbtTag;
+    if (bInSelection)
+      ++pszTextRightW; // '/' is not present in ">"
+  }
+  else
+    return bRet;
+
+  // Note: both tbtTag and tbtTag2 start with '<'
+  pszBrPairW = getBracketsPairW(nBrType);
+  if ((pszTextRightW[0] == pszBrPairW[1]) &&
+      (pszBrPairW[2] == 0 || pszTextRightW[1] == pszBrPairW[2]))
+  {
+    *pnBracketType = nBrType;
+    bRet = TRUE;
+  }
+
+  return bRet;
+}
+
+static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextRightA, int* pnBracketType, BOOL bInSelection)
+{
+  const char* pszBrPairA;
+  int  nBrType;
+  BOOL bRet;
+
+  bRet = FALSE;
+  nBrType = *pnBracketType;
+  pszBrPairA = getBracketsPairA(nBrType);
+
+  if (pszTextLeftA[0] != pszBrPairA[0])
+    return bRet;
+
+  if ((pszTextRightA[0] == pszBrPairA[1]) &&
+      (pszBrPairA[2] == 0 || pszTextRightA[1] == pszBrPairA[2]))
+  {
+    bRet = TRUE;
+    if (nBrType != tbtTag)
+      return bRet;
+  }
+
+  if (nBrType == tbtTag)
+  {
+    nBrType = tbtTag2;
+    if (bInSelection)
+      --pszTextRightA; // '/' is present in "/>"
+  }
+  else if (nBrType == tbtTag2)
+  {
+    nBrType = tbtTag;
+    if (bInSelection)
+      ++pszTextRightA; // '/' is not present in ">"
+  }
+  else
+    return bRet;
+
+  // Note: both tbtTag and tbtTag2 start with '<'
+  pszBrPairA = getBracketsPairA(nBrType);
+  if ((pszTextRightA[0] == pszBrPairA[1]) &&
+      (pszBrPairA[2] == 0 || pszTextRightA[1] == pszBrPairA[2]))
+  {
+    *pnBracketType = nBrType;
+    bRet = TRUE;
+  }
+
+  return bRet;
+}
+
 /*static*/ BOOL AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteMode)
 {
   INT_X   nEditPos;
@@ -826,42 +922,105 @@ void OnEditHighlightActiveBrackets(void)
         const char* pBrPairA;
         char*       pTextA;
         int         nBrPairLen;
+        int         nBrAltType;
 
         nSelLen = nEditEndPos - nEditPos;
         pBrPairA = getBracketsPairA(nBracketType);
+        nBrAltType = nBracketType;
         nBrPairLen = lstrlenA(pBrPairA);
         pTextA = (char*)sys_memalloc(sizeof(char)*(nSelLen + nBrPairLen + 2));
         if (pTextA)
         {
-          pTextA[0] = pBrPairA[0];
-          nSelLen = AnyRichEdit_GetTextAt(hActualEditWnd, nEditPos, nSelLen, pTextA + 1);
-          if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 2)
+          if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 3 ||
+              g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 4)
           {
-            if ((pTextA[1] == pBrPairA[0]) && 
-                (lstrcmpA(pTextA + nSelLen, pBrPairA + 1) == 0))
+            // don't select the brackets/quotes themselves
+            if (nEditPos == 0)
             {
-              // already in brackets/quotes; exclude them
-              pTextA[nSelLen] = 0;
+              AnyRichEdit_GetTextAt(hActualEditWnd, nEditPos, nSelLen + nBrPairLen, pTextA + 1);
+            }
+            else
+            {
+              AnyRichEdit_GetTextAt(hActualEditWnd, nEditPos - 1, nSelLen + nBrPairLen + 1, pTextA);
+              // Note: 
+              // "+ 1" in "nSelLen + nBrPairLen + 1" deals with "< ... >" (tbtTag)
+              // when it can be "< ... />" (tbtTag2) i.e. +1 symbol
+            }
+
+            if (IsEnclosedInBracketsA(pTextA + 1, pTextA + nSelLen - nBrPairLen + 2, &nBrAltType, TRUE))
+            {
+              // already in brackets/quotes : ["text"] ; excluding them
+              if (nBrAltType != nBracketType)
+              {
+                pBrPairA = getBracketsPairA(nBrAltType);
+                nBrPairLen = lstrlenA(pBrPairA);
+              }
+              pTextA[nSelLen - nBrPairLen + 2] = 0;
               AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA + 2, TRUE);
-              nEditEndPos -= nBrPairLen;
+              AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditEndPos - nBrPairLen);
+            }
+            else if ((g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 4) &&
+                     (nEditPos != 0) &&
+                     IsEnclosedInBracketsA(pTextA, pTextA + nSelLen + 1, &nBrAltType, FALSE))
+            {
+              // already in brackets/quotes : "[text]" ; excluding them
+              if (nBrAltType != nBracketType)
+              {
+                pBrPairA = getBracketsPairA(nBrAltType);
+                nBrPairLen = lstrlenA(pBrPairA);
+              }
+              pTextA[nSelLen + 1] = 0;
+              SendMessageA(hActualEditWnd, WM_SETREDRAW, FALSE, 0);
+              AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos - 1, nEditEndPos + nBrPairLen - 1);
+              SendMessageA(hActualEditWnd, WM_SETREDRAW, TRUE, 0);
+              AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA + 1, TRUE);
+              AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos - 1, nEditEndPos - 1);
             }
             else
             {
               // enclose in brackets/quotes
+              pTextA[0] = pBrPairA[0];
               lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
               AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
-              nEditEndPos += nBrPairLen;
+              AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos + 1, nEditPos + nSelLen + 1);
             }
           }
-          else // (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 1)
+          else
           {
-            lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
-            AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
-            ++nEditPos;
-            ++nEditEndPos;
+            pTextA[0] = pBrPairA[0];
+            nSelLen = AnyRichEdit_GetTextAt(hActualEditWnd, nEditPos, nSelLen, pTextA + 1);
+            if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 2)
+            {
+              if (IsEnclosedInBracketsA(pTextA + 1, pTextA + nSelLen - nBrPairLen + 2, &nBrAltType, TRUE))
+              {
+                // already in brackets/quotes; exclude them
+                if (nBrAltType != nBracketType)
+                {
+                  pBrPairA = getBracketsPairA(nBrAltType);
+                  nBrPairLen = lstrlenA(pBrPairA);
+                }
+                pTextA[nSelLen - nBrPairLen + 2] = 0;
+                AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA + 2, TRUE);
+                nEditEndPos -= nBrPairLen;
+              }
+              else
+              {
+                // enclose in brackets/quotes
+                lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
+                AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
+                nEditEndPos += nBrPairLen;
+              }
+            }
+            else // (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 1)
+            {
+              lstrcpyA(pTextA + nSelLen + 1, pBrPairA + 1);
+              AnyRichEdit_ReplaceSelText(hActualEditWnd, pTextA, TRUE);
+              ++nEditPos;
+              ++nEditEndPos;
+            }
+            AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditEndPos);
           }
           sys_memfree(pTextA);
-          AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditEndPos);
         }
       }
       else
@@ -870,42 +1029,105 @@ void OnEditHighlightActiveBrackets(void)
         const wchar_t* pBrPairW;
         wchar_t*       pTextW;
         int            nBrPairLen;
+        int            nBrAltType;
 
         nSelLen = nEditEndPos - nEditPos;
         pBrPairW = getBracketsPairW(nBracketType);
+        nBrAltType = nBracketType;
         nBrPairLen = lstrlenW(pBrPairW);
         pTextW = (wchar_t*)sys_memalloc(sizeof(wchar_t)*(nSelLen + nBrPairLen + 2));
         if (pTextW)
         {
-          pTextW[0] = pBrPairW[0];
-          nSelLen = AnyRichEdit_GetTextAtW(hActualEditWnd, nEditPos, nSelLen, pTextW + 1);
-          if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 2)
+          if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 3 ||
+              g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 4)
           {
-            if ((pTextW[1] == pBrPairW[0]) && 
-                (lstrcmpW(pTextW + nSelLen, pBrPairW + 1) == 0))
+            // don't select the brackets/quotes themselves
+            if (nEditPos == 0)
             {
-              // already in brackets/quotes; exclude them
-              pTextW[nSelLen] = 0;
+              AnyRichEdit_GetTextAtW(hActualEditWnd, nEditPos, nSelLen + nBrPairLen, pTextW + 1);
+            }
+            else
+            {
+              AnyRichEdit_GetTextAtW(hActualEditWnd, nEditPos - 1, nSelLen + nBrPairLen + 1, pTextW);
+              // Note: 
+              // "+ 1" in "nSelLen + nBrPairLen + 1" deals with "< ... >" (tbtTag)
+              // when it can be "< ... />" (tbtTag2) i.e. +1 symbol
+            }
+
+            if (IsEnclosedInBracketsW(pTextW + 1, pTextW + nSelLen - nBrPairLen + 2, &nBrAltType, TRUE))
+            {
+              // already in brackets/quotes : ["text"] ; excluding them
+              if (nBrAltType != nBracketType)
+              {
+                pBrPairW = getBracketsPairW(nBrAltType);
+                nBrPairLen = lstrlenW(pBrPairW);
+              }
+              pTextW[nSelLen - nBrPairLen + 2] = 0;
               AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW + 2, TRUE);
-              nEditEndPos -= nBrPairLen;
+              AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos, nEditEndPos - nBrPairLen);
+            }
+            else if ((g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 4) &&
+                     (nEditPos != 0) &&
+                     IsEnclosedInBracketsW(pTextW, pTextW + nSelLen + 1, &nBrAltType, FALSE))
+            {
+              // already in brackets/quotes : "[text]" ; excluding them
+              if (nBrAltType != nBracketType)
+              {
+                pBrPairW = getBracketsPairW(nBrAltType);
+                nBrPairLen = lstrlenW(pBrPairW);
+              }
+              pTextW[nSelLen + 1] = 0;
+              SendMessageW(hActualEditWnd, WM_SETREDRAW, FALSE, 0);
+              AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos - 1, nEditEndPos + nBrPairLen - 1);
+              SendMessageW(hActualEditWnd, WM_SETREDRAW, TRUE, 0);
+              AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW + 1, TRUE);
+              AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos - 1, nEditEndPos - 1);
             }
             else
             {
               // enclose in brackets/quotes
+              pTextW[0] = pBrPairW[0];
               lstrcpyW(pTextW + nSelLen + 1, pBrPairW + 1);
               AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW, TRUE);
-              nEditEndPos += nBrPairLen;
+              AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos + 1, nEditPos + nSelLen + 1);
             }
           }
-          else // (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 1)
+          else
           {
-            lstrcpyW(pTextW + nSelLen + 1, pBrPairW + 1);
-            AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW, TRUE);
-            ++nEditPos;
-            ++nEditEndPos;
+            pTextW[0] = pBrPairW[0];
+            nSelLen = AnyRichEdit_GetTextAtW(hActualEditWnd, nEditPos, nSelLen, pTextW + 1);
+            if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 2)
+            {
+              if (IsEnclosedInBracketsW(pTextW + 1, pTextW + nSelLen - nBrPairLen + 2, &nBrAltType, TRUE))
+              {
+                // already in brackets/quotes; exclude them
+                if (nBrAltType != nBracketType)
+                {
+                  pBrPairW = getBracketsPairW(nBrAltType);
+                  nBrPairLen = lstrlenW(pBrPairW);
+                }
+                pTextW[nSelLen - nBrPairLen + 2] = 0;
+                AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW + 2, TRUE);
+                nEditEndPos -= nBrPairLen;
+              }
+              else
+              {
+                // enclose in brackets/quotes
+                lstrcpyW(pTextW + nSelLen + 1, pBrPairW + 1);
+                AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW, TRUE);
+                nEditEndPos += nBrPairLen;
+              }
+            }
+            else // (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 1)
+            {
+              lstrcpyW(pTextW + nSelLen + 1, pBrPairW + 1);
+              AnyRichEdit_ReplaceSelTextW(hActualEditWnd, pTextW, TRUE);
+              ++nEditPos;
+              ++nEditEndPos;
+            }
+            AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos, nEditEndPos);
           }
           sys_memfree(pTextW);
-          AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos, nEditEndPos);
         }
       }
 
@@ -2843,7 +3065,7 @@ static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
   }
 }
 
-BOOL IsClearTypeEnabled()
+BOOL IsClearTypeEnabled(void)
 {
   BOOL bClearType;
   BOOL bFontSmoothing;

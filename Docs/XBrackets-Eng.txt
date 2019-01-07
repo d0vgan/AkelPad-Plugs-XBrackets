@@ -3,13 +3,13 @@ XBrackets plugin for AkelPad text editor
 -----------------------------------------------------------
 
 This plugin allows to:
-1) autocomplete brackets ([{""}]) i.e. it inserts 
-   corresponding right bracket when the left bracket 
+1) autocomplete brackets ([{""}]) i.e. it inserts
+   corresponding right bracket when the left bracket
    is typed.
-   The plugin uses "smart" autocompletion: 
+   The plugin uses "smart" autocompletion:
    - next character is analysed for ([{ brackets;
    - next & previous characters are analysed for " quote.
-2) highlight active brackets i.e. it highlights a bracket 
+2) highlight active brackets i.e. it highlights a bracket
    under the cursor and its corresponding pair bracket.
 3) go to matching pair bracket - using GoToMatchingBracket.
 4) select a text between matching pair brackets - using
@@ -19,7 +19,7 @@ Note:
 To prevent repainting of active brackets highlighted,
 XBrackets::Main must be loaded AFTER Coder::HighLight.
 Functions "GoToMatchingBracket" and "SelToMatchingBracket"
-require the plugin to be active - i.e. its function "Main" 
+require the plugin to be active - i.e. its function "Main"
 must be active.
 
 External call example:
@@ -50,9 +50,9 @@ External call example:
 Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
   common.user_brpairs = «» ‘’ “”
     User-defined bracket pairs which can be autocompleted and highlighted
-    by XBrackets. Note that bracket pairs which have identical opening and 
-    closing symbols (such as "" or '') can be highlighted incorrectly because 
-    there is no ability to definitely understand whether the caret is by the 
+    by XBrackets. Note that bracket pairs which have identical opening and
+    closing symbols (such as "" or '') can be highlighted incorrectly because
+    there is no ability to definitely understand whether the caret is by the
     opening or by the closing symbol of such bracket pair.
     To define your own bracket pairs, follow these rules:
     1) Bracket pairs must be separated by space (' ')
@@ -82,12 +82,12 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     You can define up to 90 characters in this set. Spaces are ignored.
 
   autocomplete.all_autobr = 0
-    Default behaviour: characters from the 'next_char_ok' set 
-    (and from the 'prev_char_ok' set depending on the bracket type) 
+    Default behaviour: characters from the 'next_char_ok' set
+    (and from the 'prev_char_ok' set depending on the bracket type)
     are checked to permit the brackets autocompletion.
   autocomplete.all_autobr = 1
-    Brackets can be autocompleted BEFORE any character (i.e. the 
-    'next_char_ok' set is ignored). This rule additionally depends 
+    Brackets can be autocompleted BEFORE any character (i.e. the
+    'next_char_ok' set is ignored). This rule additionally depends
     on the option "Even if corresponding right bracket exists".
   autocomplete.all_autobr = 2
     Brackets can be autocompleted AFTER any character (i.e. the
@@ -108,16 +108,32 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     existing character (i.e. over that character).
 
   autocomplete.sel_autobr = 0
-    When left (opening) bracket is typed, the selected text is disappeared 
+    When left (opening) bracket is typed, the selected text is disappeared
     (replaced with the bracket).
   autocomplete.sel_autobr = 1
     When left (opening) bracket is typed, the selected text is enclosed with
     the corresponding brackets pair.
   autocomplete.sel_autobr = 2
     When left (opening) bracket is typed, the selected text is enclosed with
-    the corresponding brackets pair, and the brackets pair become selected 
+    the corresponding brackets pair, and the brackets pair become selected
     also. If the selected text already starts and ends with the corresponding
     brackets pair, the brackets will be removed.
+  autocomplete.sel_autobr = 3
+    When left (opening) bracket is typed, the selected text is enclosed with
+    the corresponding brackets pair, and the brackets pair is _not_ selected
+    also. If the selected text already starts and ends with the corresponding
+    brackets pair, the brackets will be removed. If the surrounding brackets
+    are not selected, they are not removed. (This mode was inspired by the
+    Sublime Text editor.)
+  autocomplete.sel_autobr = 4
+    When left (opening) bracket is typed, the selected text is enclosed with
+    the corresponding brackets pair, and the brackets pair is _not_ selected
+    also. If the selected text already starts and ends with the corresponding
+    brackets pair, the brackets will be removed. If the surrounding brackets
+    are not selected, they are also removed. Thus, type a left bracket/quote
+    to enclose the selected text with the corresponding brackets pair, and
+    type the left bracket/quote again to remove the enclosing brackets/quotes.
+    (This mode was inspired by the Sublime Text editor.)
 
   highlight.hlt_bothbr = 1
     When the caret is between two pair brackets, both pairs are highlighted.
@@ -159,30 +175,30 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     The value of 0 forbids to search for a pair quote under such conditions.
 
   highlight.quote_max_lines = 10
-    Number of text lines to be processed by XBrackets while searching for 
+    Number of text lines to be processed by XBrackets while searching for
     a pair quote in one certain direction (when the search direction can be
     determined, for example:  "a b" ).
     The value of 1 means "within current line".
     The value of 0 forbids to search for a pair quote at all.
 
   highlight.br_max_lines = 0
-    Number of text lines to be processed by XBrackets while searching for 
+    Number of text lines to be processed by XBrackets while searching for
     a pair bracket.
     The value of 0 means "unrestricted" - i.e. to the end of file.
 
 The plugin allows you to change the additional options without closing AkelPad.
 In three steps, in this order:
-  1a. Open the "Plugins" window (Settings-> Plugins...) and disable the 
+  1a. Open the "Plugins" window (Settings-> Plugins...) and disable the
 function XBrackets::Main (if it is active).
-  1b. (alternative) Run XBrackets::Settings and double-click (with the left 
-mouse button) the caption "Status: the plugin is active". As a result, the 
+  1b. (alternative) Run XBrackets::Settings and double-click (with the left
+mouse button) the caption "Status: the plugin is active". As a result, the
 caption will be changed to "Status: the plugin is NOT active".
 When you deactivate the plugin it automatically saves its settings.
   2. Open the file "XBrackets.ini" (if the settings are stored in an .ini file)
-or a registry key "HKEY_CURRENT_USER\Software\Akelsoft\AkelPad\Plugs" and 
+or a registry key "HKEY_CURRENT_USER\Software\Akelsoft\AkelPad\Plugs" and
 change the required options of the XBrackets plugin.
 Don't forget to save the modified file "XBrackets.ini".
-  3. Activate the XBrackets plugin by calling its function XBrackets::Main 
+  3. Activate the XBrackets plugin by calling its function XBrackets::Main
 or by running its function XBrackets::Settings and double-clicking (with the
 left mouse button) the caption "Status: the plugin is NOT active".
 When you activate the plugin it automatically re-reads its settings.
@@ -190,6 +206,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.7.3 (June 2018)
+ + new: autocomplete.sel_autobr=3 and 4
+
 v.7.2 (July 2016)
  + option 'highlight.hlt_xmode'
 
@@ -249,7 +268,7 @@ v.5.7 (April 2014)
  * AkelPad 4.8.8+
 
 v.5.6 (September 2013)
- + fixed brackets repainting with ClearType enabled 
+ + fixed brackets repainting with ClearType enabled
    (borrowed from the SpecialChar plugin, thanks to Instructor)
  * small internal changes + 'Escaped1FileExts' added (TBD)
 
@@ -367,7 +386,7 @@ v.2.6 (March 2009)
 v.2.5 (February 2009)
  + now you can specify file types to skip brackets after //
  + better AkelEdit support
- + other small improvements/fixes 
+ + other small improvements/fixes
 
 v.2.4 (December 2008)
  + now you can "overtype" the closing bracket added automatically
@@ -413,7 +432,7 @@ v.1.4 (August 2007)
 
 v.1.3 (July 2007)
  * for AkelPad 3.3.0+
- + brackets are not highlighted after // inside C/C++/Pascal files 
+ + brackets are not highlighted after // inside C/C++/Pascal files
  + calling Settings dialog does not activate the plugin (AkelBrackets::Main)
  + the plugin can be activated/deactivated from Settings dialog
 
@@ -429,18 +448,18 @@ v.1.1 (Feb 2007)
  + settings dialog
 
 v.1.0 (Oct 2006)
- * initial version 
+ * initial version
  * for AkelPad 3.1.2+
  + autocomplete brackets
 
 
-The author expresses his thanks to Aleksander Shengalts 
-aka Instructor for his help in creation and testing 
+The author expresses his thanks to Aleksander Shengalts
+aka Instructor for his help in creation and testing
 of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Jul 2016, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Jun 2018, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);

@@ -37,8 +37,8 @@ static LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 static LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static void updatePluginData(PLUGINDATA* pd);
-static void ReadOptions();
-static void SaveOptions();
+static void ReadOptions(void);
+static void SaveOptions(void);
 
 #if use_aen_paint
 void OnAenPaint(AENPAINT* p);
@@ -1361,7 +1361,7 @@ static BOOL readOptionStrW(HANDLE hOptions, const wchar_t* pszOptionNameW, wchar
   return readOptionW(hOptions, pszOptionNameW, pszStrW, dwStrSize*sizeof(wchar_t), PO_STRING);
 }
 
-void ReadOptions()
+void ReadOptions(void)
 {
   DWORD dwValue;
   int   i;
@@ -1650,7 +1650,7 @@ enum eUpdatedOptionFlags
   fStrUsrBrPairs   = 0x40
 };
 
-void SaveOptions()
+void SaveOptions(void)
 {
   DWORD        dwNewOptionsFlags;
   DWORD        dwNewHighlightRGB[2];
