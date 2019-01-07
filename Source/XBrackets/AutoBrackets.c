@@ -2512,17 +2512,28 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
         if ((nSearchDirection == 1) ||
             (isDirectionDetecting(nDuplicatedPairDirection) && (nLine == nMinLine[0])))
         {
-          nSearchDirection = 1;
-          bRightBracket = FALSE;
-          bFound = FALSE;
-          bComment = FALSE;
-          nLine = nStartLine;
-          nWrappedLines = 0;
-          nFailReferences = 0;
+          if (g_bAkelEdit && (nSearchDirection == 0) &&
+              ci.lpLine->prev && (ci.lpLine->prev->nLineBreak == AELB_WRAP))
+          {
+            --nLine; // go to previous line
+            ++nWrappedLines;
+            if (nMinLine[nSearchDirection] != 0)
+              --nMinLine[nSearchDirection];
+          }
+          else
+          {
+            nSearchDirection = 1;
+            bRightBracket = FALSE;
+            bFound = FALSE;
+            bComment = FALSE;
+            nLine = nStartLine;
+            nWrappedLines = 0;
+            nFailReferences = 0;
 
-          ci.lpLine = NULL;
-          if (!g_bAkelEdit)
-            pcwszLine = wszLine;
+            ci.lpLine = NULL;
+            if (!g_bAkelEdit)
+              pcwszLine = wszLine;
+          }
         }
         else
         {
