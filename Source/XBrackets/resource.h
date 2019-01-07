@@ -19,9 +19,11 @@
 #define IDC_CH_BRACKETS_DOTAGIF                 1013
 #define IDC_ED_BRACKETS_DOTAGIF                 1014
 #define IDC_CH_BRACKETS_DOTAG2                  1015
-#define IDC_CH_BRACKETS_SKIPESCAPED             1016
-#define IDC_CH_BRACKETS_SKIPCOMMENT1            1017
-#define IDC_ED_BRACKETS_SKIPCOMMENT1            1018
-#define IDC_ST_BRACKETS_SKIPCOMMENT1            1019
-#define IDC_BT_BKGNDCOLOR                       1020
-#define IDC_CH_BKGNDCOLOR                       1021
+#define IDC_CH_BRACKETS_SKIPESCAPED1            1016
+#define IDC_ED_BRACKETS_SKIPESCAPED1            1017 
+#define IDC_ST_BRACKETS_SKIPESCAPED1            1018
+#define IDC_CH_BRACKETS_SKIPCOMMENT1            1019
+#define IDC_ED_BRACKETS_SKIPCOMMENT1            1020
+#define IDC_ST_BRACKETS_SKIPCOMMENT1            1021
+#define IDC_BT_BKGNDCOLOR                       1022
+#define IDC_CH_BKGNDCOLOR                       1023

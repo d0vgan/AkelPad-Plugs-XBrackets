@@ -179,6 +179,10 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.7.0 (July 2016)
+ + now the "Skip escaped brackets" option considers the file extension (in
+   the same way as the "Skip brackets after //" option does)
+
 v.6.9 (July 2016)
  + get rid of MSVCR's stuff = smaller binary
 

@@ -71,7 +71,7 @@ BOOL         bBracketsDoTagIf = FALSE;
 BOOL         bBracketsHighlightDoubleQuote = FALSE;
 BOOL         bBracketsHighlightSingleQuote = FALSE;
 BOOL         bBracketsHighlightTag = FALSE;
-BOOL         bBracketsSkipEscaped = FALSE;
+BOOL         bBracketsSkipEscaped1 = FALSE;
 BOOL         bBracketsSkipComment1 = FALSE;
 BOOL         bGoToMatchingBracketTriggered = FALSE;
 BOOL         bAkelPadIsStarting = FALSE; // when XBrackets is not autoloaded, it _must_ be FALSE
@@ -90,8 +90,8 @@ COLORREF     g_CustomColoursHighlight_0[MAX_CUSTOM_COLOURS] = { 0 };
 char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
 wchar_t      strHtmlFileExtsW[STR_FILEEXTS_SIZE] = L"htm; xml; php\0";
 wchar_t      strHtmlFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = { 0 }; //"cs; java; js; php\0";
-wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = { 0 }; //L"cs; java; js; php\0";
+char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
+wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 wchar_t      strEscaped1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
 char         strComment1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
 wchar_t      strComment1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
@@ -99,18 +99,18 @@ wchar_t      strComment1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
 wchar_t      strPluginFuncMainW[STR_PLUGINFUNC_SIZE] = { 0 };
 
 #define      OPT_UNDEFINED_DWORD      0xFEDCBA98
-#define      OPTF_AUTOCOMPLETE        0x0001
-#define      OPTF_HIGHLIGHT_ENABLED   0x0002
-#define      OPTF_VISIBLEAREA         0x0004
-#define      OPTF_RIGHTBRACKETOK      0x0008
-#define      OPTF_HIGHLIGHT_TEXT      0x0010
-#define      OPTF_HIGHLIGHT_BKGND     0x0020
-#define      OPTF_DOSINGLEQUOTE       0x0100
-#define      OPTF_DOTAG               0x0200
-#define      OPTF_DOTAGIF             0x0400
-#define      OPTF_DOTAG2              0x0800
-#define      OPTF_SKIPESCAPED         0x1000
-#define      OPTF_SKIPCOMMENT1        0x2000
+#define      OPTF_AUTOCOMPLETE        0x000001
+#define      OPTF_HIGHLIGHT_ENABLED   0x000002
+#define      OPTF_VISIBLEAREA         0x000004
+#define      OPTF_RIGHTBRACKETOK      0x000008
+#define      OPTF_HIGHLIGHT_TEXT      0x000010
+#define      OPTF_HIGHLIGHT_BKGND     0x000020
+#define      OPTF_DOSINGLEQUOTE       0x000100
+#define      OPTF_DOTAG               0x000200
+#define      OPTF_DOTAGIF             0x000400
+#define      OPTF_DOTAG2              0x000800
+#define      OPTF_SKIPESCAPED1        0x001000
+#define      OPTF_SKIPCOMMENT1        0x002000
 #define      OPTF_DONOTDOUBLEQUOTE    0x010000
 #define      OPTF_HLDOUBLEQUOTE       0x100000
 #define      OPTF_HLSINGLEQUOTE       0x200000
@@ -357,7 +357,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   BOOL     prevBracketsHighlightTag;
   BOOL     prevBracketsHighlightDoubleQuote;
   BOOL     prevBracketsHighlightSingleQuote;
-  BOOL     prevBracketsSkipEscaped;
+  BOOL     prevBracketsSkipEscaped1;
   BOOL     prevBracketsSkipComment1;
   BOOL     bUpdateBracketsHighlight;
   INT_PTR  nRet;
@@ -390,7 +390,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   prevBracketsHighlightTag = bBracketsHighlightTag;
   prevBracketsHighlightDoubleQuote = bBracketsHighlightDoubleQuote;
   prevBracketsHighlightSingleQuote = bBracketsHighlightSingleQuote;
-  prevBracketsSkipEscaped = bBracketsSkipEscaped;
+  prevBracketsSkipEscaped1 = bBracketsSkipEscaped1;
   prevBracketsSkipComment1 = bBracketsSkipComment1;
   bUpdateBracketsHighlight = FALSE;
 
@@ -417,7 +417,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       (prevBracketsHighlightTag != bBracketsHighlightTag) ||
       (prevBracketsHighlightDoubleQuote != bBracketsHighlightDoubleQuote) ||
       (prevBracketsHighlightSingleQuote != bBracketsHighlightSingleQuote) ||
-      (prevBracketsSkipEscaped != bBracketsSkipEscaped) ||
+      (prevBracketsSkipEscaped1 != bBracketsSkipEscaped1) ||
       (prevBracketsSkipComment1 != bBracketsSkipComment1))
   {
     bUpdateBracketsHighlight = TRUE;
@@ -1544,8 +1544,8 @@ void ReadOptions()
       ((opt_dwOptionsFlags0 & OPTF_DOTAG2) == OPTF_DOTAG2);
     bBracketsDoTagIf =
       ((opt_dwOptionsFlags0 & OPTF_DOTAGIF) == OPTF_DOTAGIF);
-    bBracketsSkipEscaped =
-      ((opt_dwOptionsFlags0 & OPTF_SKIPESCAPED) == OPTF_SKIPESCAPED);
+    bBracketsSkipEscaped1 =
+      ((opt_dwOptionsFlags0 & OPTF_SKIPESCAPED1) == OPTF_SKIPESCAPED1);
     bBracketsSkipComment1 = 
       ((opt_dwOptionsFlags0 & OPTF_SKIPCOMMENT1) == OPTF_SKIPCOMMENT1);
     bBracketsHighlightDoubleQuote = 
@@ -1679,8 +1679,8 @@ void SaveOptions()
     dwNewOptionsFlags |= OPTF_DOTAG2;
   if (bBracketsDoTagIf)
     dwNewOptionsFlags |= OPTF_DOTAGIF;
-  if (bBracketsSkipEscaped)
-    dwNewOptionsFlags |= OPTF_SKIPESCAPED;
+  if (bBracketsSkipEscaped1)
+    dwNewOptionsFlags |= OPTF_SKIPESCAPED1;
   if (bBracketsSkipComment1)
     dwNewOptionsFlags |= OPTF_SKIPCOMMENT1;
   if (bBracketsHighlightDoubleQuote)

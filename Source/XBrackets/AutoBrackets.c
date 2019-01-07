@@ -147,7 +147,7 @@ extern BOOL     bBracketsDoTagIf;
 extern BOOL     bBracketsHighlightDoubleQuote;
 extern BOOL     bBracketsHighlightSingleQuote;
 extern BOOL     bBracketsHighlightTag;
-extern BOOL     bBracketsSkipEscaped;
+extern BOOL     bBracketsSkipEscaped1;
 extern BOOL     bBracketsSkipComment1;
 extern COLORREF bracketsColourHighlight[2];
 extern char     strHtmlFileExtsA[STR_FILEEXTS_SIZE];
@@ -1017,7 +1017,7 @@ void OnEditHighlightActiveBrackets(void)
   }
 
   if (bPrevCharOK && bNextCharOK && 
-      bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1))
+      bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1))
   {
     wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
     INT_X   pos;
@@ -2137,7 +2137,7 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
   }
 
   if ((nBracketType != tbtNone) && 
-      bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && 
+      bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) && 
       (nCharacterPosition > 0))
   {
     wchar_t szPrefixW[MAX_ESCAPED_PREFIX + 2];
@@ -3333,7 +3333,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 
 /*static*/ BOOL isEscapedCharacterW(const INT_X pos, const wchar_t* pcwszLine)
 {
-  if (bBracketsSkipEscaped && (nCurrentFileType2 & tfmEscaped1) && (pos > 0))
+  if (bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) && (pos > 0))
   {
     INT_X prefixPos;
     INT   prefixLen;
@@ -3492,6 +3492,7 @@ static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
 
 static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
 {
+  /*
   if (g_bOldWindows)
   {
     if (strEscaped1FileExtsA[0] == 0)
@@ -3502,6 +3503,7 @@ static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
     if (strEscaped1FileExtsW[0] == 0)
       return TRUE;
   }
+  */
   return wstr_is_listed_ext(szExtW, strEscaped1FileExtsW, strEscaped1FileExtsA);
 }
 

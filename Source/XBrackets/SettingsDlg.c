@@ -25,7 +25,7 @@ extern BOOL        bBracketsDoTagIf;
 extern BOOL        bBracketsHighlightDoubleQuote;
 extern BOOL        bBracketsHighlightSingleQuote;
 extern BOOL        bBracketsHighlightTag;
-extern BOOL        bBracketsSkipEscaped;
+extern BOOL        bBracketsSkipEscaped1;
 extern BOOL        bBracketsSkipComment1;
 extern COLORREF    bracketsColourHighlight[2];
 extern COLORREF    g_CustomColoursHighlight[MAX_CUSTOM_COLOURS];
@@ -54,6 +54,7 @@ static void SettingsDlg_OnChBracketsDoDoubleQuoteClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoSingleQuoteClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoTagClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoTagIfClicked(HWND hDlg);
+static void SettingsDlg_OnChBracketsSkipEscaped1(HWND hDlg);
 static void SettingsDlg_OnChBracketsSkipComment1(HWND hDlg);
 static void SettingsDlg_OnDrawItem(HWND hDlg, UINT uControlID, DRAWITEMSTRUCT* pDis);
 static void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg);
@@ -132,6 +133,14 @@ INT_PTR CALLBACK SettingsDlgProc(
         }
         break;
       }
+      case IDC_CH_BRACKETS_SKIPESCAPED1:
+      {
+        if (HIWORD(wParam) == BN_CLICKED)
+        {
+          SettingsDlg_OnChBracketsSkipEscaped1(hDlg);
+        }
+        break;
+      }
       case IDC_CH_BRACKETS_SKIPCOMMENT1:
       {
         if (HIWORD(wParam) == BN_CLICKED)
@@ -197,28 +206,29 @@ INT_PTR CALLBACK SettingsDlgProc(
   return 0;
 }
 
+static void settdlg_WriteOptToStr(HWND hEd, char* strOptStrA, wchar_t* strOptStrW, int nMaxStr)
+{
+  if (hEd)
+  {
+    if (g_bOldWindows)
+      GetWindowTextA(hEd, strOptStrA, nMaxStr);
+    else
+      GetWindowTextW(hEd, strOptStrW, nMaxStr);
+  }
+}
+
 BOOL SettingsDlg_OnOK(HWND hDlg)
 {
-  HWND hEd;
   UINT uState;
 
-  hEd = GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF);
-  if (hEd)
-  {
-    if (g_bOldWindows)
-      GetWindowTextA(hEd, strHtmlFileExtsA, STR_FILEEXTS_SIZE - 1);
-    else
-      GetWindowTextW(hEd, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1);
-  }
+  settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
+    strHtmlFileExtsA, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
-  hEd = GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1);
-  if (hEd)
-  {
-    if (g_bOldWindows)
-      GetWindowTextA(hEd, strComment1FileExtsA, STR_FILEEXTS_SIZE - 1);
-    else
-      GetWindowTextW(hEd, strComment1FileExtsW, STR_FILEEXTS_SIZE - 1);
-  }
+  settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1),
+    strEscaped1FileExtsA, strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
+
+  settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
+    strComment1FileExtsA, strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   bBracketsAutoComplete = 
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_AUTOCOMPLETE);
@@ -250,8 +260,8 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOTAG2);
   bBracketsDoTagIf = 
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOTAGIF);
-  bBracketsSkipEscaped =
-    CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPESCAPED);
+  bBracketsSkipEscaped1 =
+    CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPESCAPED1);
   bBracketsSkipComment1 = 
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPCOMMENT1);
 
@@ -378,6 +388,13 @@ void SettingsDlg_OnChBracketsDoTagIfClicked(HWND hDlg)
   DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOTAGIF, bEnable);
 }
 
+void SettingsDlg_OnChBracketsSkipEscaped1(HWND hDlg)
+{
+  BOOL bEnable = CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPESCAPED1);
+  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1, bEnable);
+  DlgItem_EnableWindow(hDlg, IDC_ST_BRACKETS_SKIPESCAPED1, bEnable);
+}
+
 void SettingsDlg_OnChBracketsSkipComment1(HWND hDlg)
 {
   BOOL bEnable = CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPCOMMENT1);
@@ -476,9 +493,21 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
   showPluginStatus(hDlg);
 }
 
+static void settdlg_InitOptFromStr(HWND hEd, const char* strOptStrA, const wchar_t* strOptStrW, int nMaxStr)
+{
+  if (hEd)
+  {
+    SendMessage(hEd, EM_LIMITTEXT, (WPARAM) nMaxStr, 0);
+
+    if (g_bOldWindows)
+      SetWindowTextA(hEd, strOptStrA);
+    else
+      SetWindowTextW(hEd, strOptStrW);
+  }
+}
+
 void SettingsDlg_OnInitDialog(HWND hDlg)
 {
-  HWND hEd;
   BOOL bEnable;
   UINT uState;
 
@@ -527,7 +556,7 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
   CheckBox_SetCheck(hDlg, 
     IDC_CH_BRACKETS_DOTAGIF, bBracketsDoTagIf);
   CheckBox_SetCheck(hDlg,
-    IDC_CH_BRACKETS_SKIPESCAPED, bBracketsSkipEscaped);
+    IDC_CH_BRACKETS_SKIPESCAPED1, bBracketsSkipEscaped1);
   CheckBox_SetCheck(hDlg, 
     IDC_CH_BRACKETS_SKIPCOMMENT1, bBracketsSkipComment1);
   DlgItem_EnableWindow(hDlg, 
@@ -539,6 +568,10 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
   DlgItem_EnableWindow(hDlg, IDC_BT_BRACKETCOLOR, bEnable);
   DlgItem_EnableWindow(hDlg, IDC_CH_BKGNDCOLOR, bEnable);
   DlgItem_EnableWindow(hDlg, IDC_BT_BKGNDCOLOR, bEnable);
+  DlgItem_EnableWindow(hDlg, 
+    IDC_ED_BRACKETS_SKIPESCAPED1, bBracketsSkipEscaped1);
+  DlgItem_EnableWindow(hDlg, 
+    IDC_ST_BRACKETS_SKIPESCAPED1, bBracketsSkipEscaped1);
   DlgItem_EnableWindow(hDlg, 
     IDC_ED_BRACKETS_SKIPCOMMENT1, bBracketsSkipComment1);
   DlgItem_EnableWindow(hDlg, 
@@ -553,27 +586,14 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
 
   showPluginStatus(hDlg);
 
-  hEd = GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF);
-  if (hEd)
-  {
-    SendMessage(hEd, EM_LIMITTEXT, (WPARAM) (STR_FILEEXTS_SIZE - 1), 0);
+  settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
+    strHtmlFileExtsA, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
-    if (g_bOldWindows)
-      SetWindowTextA(hEd, strHtmlFileExtsA);
-    else
-      SetWindowTextW(hEd, strHtmlFileExtsW);
-  }
+  settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1),
+    strEscaped1FileExtsA, strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
-  hEd = GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1);
-  if (hEd)
-  {
-    SendMessage(hEd, EM_LIMITTEXT, (WPARAM) (STR_FILEEXTS_SIZE - 1), 0);
-
-    if (g_bOldWindows)
-      SetWindowTextA(hEd, strComment1FileExtsA);
-    else
-      SetWindowTextW(hEd, strComment1FileExtsW);
-  }
+  settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
+    strComment1FileExtsA, strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   sd_hToolTip = SettingsDlg_InitToolTip(hDlg);
 }
