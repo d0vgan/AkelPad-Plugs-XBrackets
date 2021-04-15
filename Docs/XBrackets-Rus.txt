@@ -238,6 +238,11 @@ XBrackets::Settings и в по€вившемс€ окне дважды щелкнув лев.кн.мыши на
 --------
 »стори€:
 --------
+v.7.6 (јпрель 2021)
+ - исправлено: при вызове GoToNearestBracket и SelToNearestBrackets
+   функци€ NearestBr_ApplyStateToRange теперь провер€ет условие
+   nLeftBrPos < nRightBrPos
+
 v.7.5 (ќкт€брь 2018)
  * небольшие уточнени€ в GoToNearestBracket/SelToNearestBrackets
  * 12 лет XBrackets! :)
@@ -502,7 +507,7 @@ Instructor за его помощь в создании и тестировании
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Oct 2018, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Apr 2021, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 Ётот плагин €вл€етс€ бесплатным (бесплатным как дл€ частного,

@@ -3378,7 +3378,8 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, tGetNearestBracketsState
 
 static BOOL NearestBr_ApplyStateToRange(const int action, const INT_X nStartPos, const tGetNearestBracketsState* state, CHARRANGE_X* out_cr)
 {
-  if ( state->nRightBrType != tbtNone && state->nRightBrType == state->nLeftBrType )
+  if ( state->nRightBrType != tbtNone && state->nRightBrType == state->nLeftBrType &&
+       state->nLeftBrPos < state->nRightBrPos )
   {
     INT_X nLeftBrPos;
     INT_X nRightBrPos;

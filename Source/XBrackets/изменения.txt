@@ -1,4 +1,13 @@
-﻿Sep 2018
+﻿Apr 2021
+--------
++ исправлено: в NearestBr_ApplyStateToRange добавлена проверка условия
+  state->nLeftBrPos < state->nRightBrPos, потому что вызванная перед ней
+  функция NearestBr_FindLeftBracket может не найти скобку и вернуть FALSE,
+  после чего функция NearestBr_AdjustLeftBracketPos установит значение
+  state->nLeftBrPos = poci->cookies[0].nPos без дополнительных проверок.
+
+
+Sep 2018
 --------
 + новые ф-ции GoToNearestBracket и SelToNearestBrackets.
   Их реализация достаточно сильно опирается на плагин Coder, и без него

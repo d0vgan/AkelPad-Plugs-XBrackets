@@ -234,6 +234,10 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.7.6 (April 2021)
+ - fixed: when GoToNearestBracket and SelToNearestBrackets are called,
+   NearestBr_ApplyStateToRange is now checking if nLeftBrPos < nRightBrPos
+
 v.7.5 (October 2018)
  * small corrections in GoToNearestBracket/SelToNearestBrackets
  * 12 years of XBrackets! :)
@@ -498,7 +502,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Oct 2018, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Apr 2021, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);
