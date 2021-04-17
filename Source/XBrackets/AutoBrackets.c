@@ -5669,26 +5669,33 @@ const wchar_t* getCurrentBracketsPairW(void)
 
 BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
 {
-  const CHARRANGE_X* crOldSel;
+  INT_X pos;
+  INT_X check_pos;
+  int nOuterLeftBrType;
+  int nOuterRightBrType;
+  int nOuterLeftBrTypeInversed;
+  int nOuterRightBrTypeInversed;
+  int nInnerLeftBrType;
+  int nInnerRightBrType;
+  int nInnerLeftBrTypeInversed;
+  int nInnerRightBrTypeInversed;
+  BOOL bInnerBracketsSelected;
+  wchar_t left_ch;
+  wchar_t right_ch;
+  CHARRANGE_X crNewSel;
+  CHARRANGE_X crOldSel;
 
-  crOldSel = (const CHARRANGE_X *) crSel;
-  if (crOldSel->cpMin != 0)
+  crOldSel.cpMin = ((const CHARRANGE_X *) crSel)->cpMin;
+  crOldSel.cpMax = ((const CHARRANGE_X *) crSel)->cpMax;
+
+  for (;;)
   {
-    wchar_t left_ch;
-    wchar_t right_ch;
-    int nOuterLeftBrType;
-    int nOuterRightBrType;
-    int nOuterLeftBrTypeInversed;
-    int nOuterRightBrTypeInversed;
-    int nInnerLeftBrType;
-    int nInnerRightBrType;
-    INT_X pos;
-    BOOL bInnerBracketsSelected;
-    CHARRANGE_X crNewSel;
+    if (crOldSel.cpMin == 0)
+      return FALSE;
 
     // 1. Let's check if there are outer brackets:  [| ... |]
-    left_ch = getCharAt(hWndEdit, crOldSel->cpMin - 1);
-    right_ch = getCharAt(hWndEdit, crOldSel->cpMax);
+    left_ch = getCharAt(hWndEdit, crOldSel.cpMin - 1);
+    right_ch = getCharAt(hWndEdit, crOldSel.cpMax);
 
     nOuterLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT);
     if (nOuterLeftBrType == tbtNone)
@@ -5705,18 +5712,27 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     if (nOuterLeftBrType != tbtNone && nOuterLeftBrType == nOuterRightBrType)
     {
       //  [| ... |]  -->  |[ ... ]|
-      crNewSel.cpMin = crOldSel->cpMin - 1;
-      crNewSel.cpMax = crOldSel->cpMax + 1;
+      crNewSel.cpMin = crOldSel.cpMin - 1;
+      crNewSel.cpMax = crOldSel.cpMax + 1;
       SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
       return TRUE;
     }
 
     // 2. Let's check if there are inner brackets selected:  |[ ... ]|
-    left_ch = getCharAt(hWndEdit, crOldSel->cpMin);
-    right_ch = getCharAt(hWndEdit, crOldSel->cpMax - 1);
+    left_ch = getCharAt(hWndEdit, crOldSel.cpMin);
+    right_ch = getCharAt(hWndEdit, crOldSel.cpMax - 1);
 
     nInnerLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT);
+    if (nInnerLeftBrType == tbtNone)
+      nInnerLeftBrTypeInversed = getRightBracketType(left_ch, BTF_HIGHLIGHT);  //  |] ...
+    else
+      nInnerLeftBrTypeInversed = tbtNone;
+
     nInnerRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT);
+    if (nInnerRightBrType == tbtNone)
+      nInnerRightBrTypeInversed = getLeftBracketType(right_ch, BTF_HIGHLIGHT);  //  ... [|
+    else
+      nInnerRightBrTypeInversed = tbtNone;
 
     if (nInnerLeftBrType != tbtNone && nInnerLeftBrType == nInnerRightBrType)
       bInnerBracketsSelected = TRUE;
@@ -5724,52 +5740,72 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       bInnerBracketsSelected = FALSE;
 
     // 3. Character position to start from
-    pos = crOldSel->cpMin - 1;
+    pos = crOldSel.cpMin - 1;
 
     if (bInnerBracketsSelected)
     {
-      if (nOuterLeftBrType != tbtNone)  //  (|[ ... ]| ...
-        pos = crOldSel->cpMax + 1;
-      else if (nOuterRightBrType != tbtNone)  //  ... |[ ... ]|)
-        pos = crOldSel->cpMin - 1;
+      //  |[ ... ]|
+      if (nOuterLeftBrType != tbtNone || nOuterRightBrTypeInversed != tbtNone) //  (|[ ... ]| ...  or  |[ ... ]|( ...
+        pos = crOldSel.cpMax + 1;
+      else if (nOuterRightBrType != tbtNone || nOuterLeftBrTypeInversed != tbtNone) //  ... |[ ... ]|)  or  ... )|[ ... ]|
+        pos = crOldSel.cpMin - 1;
+    }
+    else if (nInnerLeftBrType != tbtNone)
+    {
+      //  |[ ...
+      pos = crOldSel.cpMin + 1;
+    }
+    else if (nInnerRightBrType != tbtNone)
+    {
+      //  ... ]|
+      pos = crOldSel.cpMax - 1;
+    }
+    else
+    {
+      if (nOuterLeftBrTypeInversed != tbtNone && nOuterRightBrTypeInversed != tbtNone)  //  )| ... |{
+        pos = crOldSel.cpMin + 1;
+      else if (nOuterLeftBrTypeInversed != tbtNone || nInnerLeftBrTypeInversed != tbtNone)  //  }| ... |  or  |] ... |
+        pos = crOldSel.cpMax;
+      else
+        pos = crOldSel.cpMin;  //  | ... |{  or  | ... |  or  | ... [|
     }
 
     // 4. finally, heavy artillery:
     if ( GetNearestBracketsRange(XBRA_SELTO_NEARBR, gnbrfWiden, pos, &crNewSel) )
     {
-      if (crNewSel.cpMin <= crOldSel->cpMin && crNewSel.cpMax >= crOldSel->cpMax)
+      if (crNewSel.cpMin <= crOldSel.cpMin && crNewSel.cpMax >= crOldSel.cpMax)
       {
         SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
         return TRUE;
       }
+
       if ( bInnerBracketsSelected )
       {
-        INT_X check_pos;
-
-        if (nOuterLeftBrType != tbtNone || nOuterLeftBrTypeInversed != tbtNone)
+        if (nOuterLeftBrType != tbtNone || nOuterRightBrTypeInversed != tbtNone)
         {
           if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
-            check_pos = crOldSel->cpMax; // checking for  (|[ ... ]|!{ ... }!
+            check_pos = crOldSel.cpMax; // checking for  (|[ ... ]|!{ ... }!  or  ... |[ ... ]|!{ ... }!
           else
-            check_pos = crOldSel->cpMax + 1; // checking for  (|[ ... ]|{! ... !}
+            check_pos = crOldSel.cpMax + 1; // checking for  (|[ ... ]|{! ... !}  or  ... |[ ... ]|{! ... !}
           if (crNewSel.cpMin == check_pos)
           {
-            crNewSel.cpMin = crOldSel->cpMin;
+            crNewSel.cpMin = crOldSel.cpMin;
             if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
               crNewSel.cpMax += 1;
             SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
             return TRUE;
           }
         }
-        if (nOuterRightBrType != tbtNone || nOuterRightBrTypeInversed != tbtNone)
+
+        if (nOuterRightBrType != tbtNone || nOuterLeftBrTypeInversed != tbtNone)
         {
           if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
-            check_pos = crOldSel->cpMin; // checking for  !{ ... }!|[ ... ]|)
+            check_pos = crOldSel.cpMin; // checking for  !{ ... }!|[ ... ]|)  or  !{ ... }!|[ ... ]| ...
           else
-            check_pos = crOldSel->cpMin - 1; // checking for  {! ... !}|[ ... ]|)
+            check_pos = crOldSel.cpMin - 1; // checking for  {! ... !}|[ ... ]|)  or  {! ... !}|[ ... ]| ...
           if (crNewSel.cpMax == check_pos)
           {
-            crNewSel.cpMax = crOldSel->cpMax;
+            crNewSel.cpMax = crOldSel.cpMax;
             if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
               crNewSel.cpMin -= 1;
             SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
@@ -5777,7 +5813,29 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
           }
         }
       }
+
+      if (crNewSel.cpMax < crOldSel.cpMin)
+      {
+        //  { ... } |[ ... ]|
+        if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
+          crOldSel.cpMin = crNewSel.cpMin;  //  !{ ... }! |[ ... ]|
+        else
+          crOldSel.cpMin = crNewSel.cpMin - 1;  //  {! ... !} |[ ... ]|
+        continue; // next iteration
+      }
+
+      if (crNewSel.cpMin > crOldSel.cpMax)
+      {
+        //  |[ ... ]| { ... }
+        if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
+          crOldSel.cpMax = crNewSel.cpMax;  //  |[ ... ]| !{ ... }!
+        else
+          crOldSel.cpMax = crNewSel.cpMax + 1;  //  |[ ... ]| {! ... !}
+        continue; // next iteration
+      }
     }
+
+    return FALSE;
   }
 
   return FALSE;
