@@ -206,7 +206,11 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     The value of this option will be the sum of the following numbers:
     0 - (default) the surrounding brackets themselves are either included or
         not included in the selection, depending on the position of the caret;
-    1 - the surrounding brackets are always included in the selection.
+    1 - the surrounding brackets are always included in the selection;
+    2 - repeated calls of SelToNearestBrackets widen the nearest brackets
+        selection (i.e. the selection within brackets becomes the selection
+        outside brackets, and the repeated calls widen the selection to the
+        nearest surrounding brackets).
 
   nearestbr.max_lines = 0
     Number of text lines to be processed by XBrackets while searching for
@@ -234,6 +238,9 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.7.7 (April 2021)
+ + added: nearestbr.selto_flags = 2 (widens the nearest brackets selection)
+
 v.7.6 (April 2021)
  - fixed: when GoToNearestBracket and SelToNearestBrackets are called,
    NearestBr_ApplyStateToRange is now checking if nLeftBrPos < nRightBrPos
