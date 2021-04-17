@@ -2860,12 +2860,17 @@ typedef struct sGetNearestBracketsState {
     tOccurrencesData occData;
 } tGetNearestBracketsState;
 
-static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState* state, const tGetHighlightIndexesCookie* brCookie)
+enum eGetNearestBracketsFlags {
+  gnbrfWiden = 0x02
+};
+
+static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags, tGetNearestBracketsState* state, const tGetHighlightIndexesCookie* brCookie)
 {
   INT_X   nStopPos;
   INT_X   nBrPos;
   int     nBrType;
   int     nDupPairDirection;
+  BOOL    bBreak;
   wchar_t wch;
   tOccurrenceCookie cookie;
   AECHARINDEX       aeci;
@@ -2891,15 +2896,19 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState*
     }
     if ( brCookie->nResult == ghlrPair )
     {
-      // optimization: don't search outside of the range pos1...pos2
-      if ( nStopPos < brCookie->pos1 )
+      if ( (flags & gnbrfWiden) == 0 || (nStartPos >= brCookie->pos1 && nStartPos <= brCookie->pos2) )
       {
-        nStopPos = brCookie->pos1;
-        if ( brCookie->nBracketType == tbtTag || brCookie->nBracketType == tbtTag2 )
-          --nStopPos; // including the '<' to be able to find the paired '>'
+        // optimization: don't search outside of the range pos1...pos2
+        if ( nStopPos < brCookie->pos1 )
+        {
+          nStopPos = brCookie->pos1;
+          if ( brCookie->nBracketType == tbtTag || brCookie->nBracketType == tbtTag2 )
+            --nStopPos; // including the '<' to be able to find the paired '>'
+        }
       }
     }
 
+    bBreak = FALSE;
     nBrPos = nStartPos - 1;
     if ( g_bAkelEdit )
     {
@@ -2908,7 +2917,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState*
       else
         SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
     }
-    for ( ; nBrPos >= nStopPos; --nBrPos )
+    for ( ; nBrPos >= nStopPos && !bBreak; --nBrPos )
     {
       if ( g_bAkelEdit )
       {
@@ -2926,7 +2935,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState*
               AEC_IndexDec(&aeci);
           }
           else
-            break;
+            bBreak = TRUE;
         }
         else
           AEC_IndexDec(&aeci);
@@ -2977,7 +2986,11 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, tGetNearestBracketsState*
               if ( nBrPos == c.pos2 ) // really at "...|"
               {
                 nBrPos = c.pos1 - 1;  //  "|...  ->  |"...
-                if ( g_bAkelEdit )
+                if (nBrPos == 0)
+                {
+                  bBreak = TRUE;
+                }
+                else if ( g_bAkelEdit )
                 {
                   if ( g_bOldWindows )
                     SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
@@ -3123,7 +3136,7 @@ static void NearestBr_AdjustLeftBracketPos(tGetNearestBracketsState* state)
   }
 }
 
-static BOOL NearestBr_FindRightBracket(INT_X nStartPos, tGetNearestBracketsState* state, const tGetHighlightIndexesCookie* brCookie)
+static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags, tGetNearestBracketsState* state, const tGetHighlightIndexesCookie* brCookie)
 {
   INT_X   nStopPos;
   INT_X   nBrPos;
@@ -3161,12 +3174,15 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, tGetNearestBracketsState
     }
     if ( brCookie->nResult == ghlrPair )
     {
-      // optimization: don't search outside of the range pos1...pos2
-      if ( nStopPos > brCookie->pos2 )
+      if ( (flags & gnbrfWiden) == 0 || (nStartPos >= brCookie->pos1 && nStartPos <= brCookie->pos2) )
       {
-        nStopPos = brCookie->pos2;
-        if ( brCookie->nBracketType == tbtTag || brCookie->nBracketType == tbtTag2 )
-          ++nStopPos; // including the '>' to be able to find the paired '<'
+        // optimization: don't search outside of the range pos1...pos2
+        if ( nStopPos > brCookie->pos2 )
+        {
+          nStopPos = brCookie->pos2;
+          if ( brCookie->nBracketType == tbtTag || brCookie->nBracketType == tbtTag2 )
+            ++nStopPos; // including the '>' to be able to find the paired '<'
+        }
       }
     }
 
@@ -3453,7 +3469,7 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const INT_X nStartPos,
   return FALSE;
 }
 
-static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosition, CHARRANGE_X* out_cr)
+static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, const INT_X nCharacterPosition, CHARRANGE_X* out_cr)
 {
   INT_X nStartPos;
   tGetNearestBracketsState state;
@@ -3501,7 +3517,7 @@ static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosi
       state.nLeftBrType = nBrType;
       state.nLeftDupDirection = nDupDir;
       NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
-      NearestBr_FindRightBracket(nStartPos, &state, &brCookie);
+      NearestBr_FindRightBracket(nStartPos, flags, &state, &brCookie);
     }
     else if ( nAtBr & abcRightBr )
     {
@@ -3512,7 +3528,7 @@ static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosi
       state.nRightBrType = nBrType;
       state.nRightDupDirection = nDupDir;
       NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
-      NearestBr_FindLeftBracket(nStartPos, &state, &brCookie);
+      NearestBr_FindLeftBracket(nStartPos, flags, &state, &brCookie);
       NearestBr_AdjustLeftBracketPos(&state);
     }
     else if ( nAtBr & abcDetectBr )
@@ -3531,7 +3547,7 @@ static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosi
       state.nLeftBrType = nBrType;
       state.nLeftDupDirection = nDupDir;
       NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie);
-      NearestBr_FindRightBracket(nStartPos, &state, &brCookie);
+      NearestBr_FindRightBracket(nStartPos, flags, &state, &brCookie);
       if ( brCookie.nResult == ghlrNone && state.nRightBrType != state.nLeftBrType )
       {
         state.nLeftBrPos = -1;
@@ -3549,7 +3565,7 @@ static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosi
         state.nRightBrType = nBrType;
         state.nRightDupDirection = nDupDir;
         NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie);
-        NearestBr_FindLeftBracket(nStartPos, &state, &brCookie);
+        NearestBr_FindLeftBracket(nStartPos, flags, &state, &brCookie);
         NearestBr_AdjustLeftBracketPos(&state);
       }
     }
@@ -3557,31 +3573,32 @@ static BOOL GetNearestBracketsRange(const int action, const INT_X nCharacterPosi
     {
       // not at a bracket
       NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
-      NearestBr_FindLeftBracket(nStartPos, &state, &brCookie);
+      NearestBr_FindLeftBracket(nStartPos, flags, &state, &brCookie);
       NearestBr_AdjustLeftBracketPos(&state);
       if ( state.nLeftBrType != tbtNone )
       {
-        NearestBr_FindRightBracket(nStartPos, &state, &brCookie);
+        NearestBr_FindRightBracket(nStartPos, flags, &state, &brCookie);
       }
     }
   }
 
-  if ( (brCookie.nResult == ghlrPair) &&
-       (state.nRightBrType == tbtNone || state.nRightBrType != state.nLeftBrType ||
-        brCookie.pos2 - brCookie.pos1 < state.nRightBrPos - state.nLeftBrPos)
-     )
+  if ( brCookie.nResult == ghlrPair )
   {
-    state.nLeftBrPos = brCookie.pos1;
-    state.nRightBrPos = brCookie.pos2;
-    state.nLeftBrType = brCookie.nBracketType;    
-    state.nRightBrType = brCookie.nBracketType;
-    state.nLeftDupDirection = DP_NONE;
-    state.nRightDupDirection = DP_NONE;
+    if ( state.nRightBrType == tbtNone || state.nRightBrType != state.nLeftBrType ||
+         ((flags & gnbrfWiden) == 0 && brCookie.pos2 - brCookie.pos1 < state.nRightBrPos - state.nLeftBrPos) )
+    {
+      state.nLeftBrPos = brCookie.pos1;
+      state.nRightBrPos = brCookie.pos2;
+      state.nLeftBrType = brCookie.nBracketType;    
+      state.nRightBrType = brCookie.nBracketType;
+      state.nLeftDupDirection = DP_NONE;
+      state.nRightDupDirection = DP_NONE;
 
-    if ( brCookie.pos1 == nStartPos + 1 )
-      ++nStartPos; //  |(  ->  (|
-    else if ( brCookie.pos2 + 1 == nStartPos )
-      --nStartPos; //  )|  ->  |)
+      if ( brCookie.pos1 == nStartPos + 1 )
+        ++nStartPos; //  |(  ->  (|
+      else if ( brCookie.pos2 + 1 == nStartPos )
+        --nStartPos; //  )|  ->  |)
+    }
   }
 
   return NearestBr_ApplyStateToRange(action, nStartPos, &state, out_cr);
@@ -3593,7 +3610,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
 
   updateActualState(hEditWnd);
 
-  if ( GetNearestBracketsRange(action, nCharacterPosition, &cr) )
+  if ( GetNearestBracketsRange(action, 0, nCharacterPosition, &cr) )
   {
     SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) &cr);
   }
@@ -5648,4 +5665,120 @@ const wchar_t* getCurrentBracketsPairW(void)
   }
 
   return szBracketsPair;
+}
+
+BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
+{
+  const CHARRANGE_X* crOldSel;
+
+  crOldSel = (const CHARRANGE_X *) crSel;
+  if (crOldSel->cpMin != 0)
+  {
+    wchar_t left_ch;
+    wchar_t right_ch;
+    int nOuterLeftBrType;
+    int nOuterRightBrType;
+    int nOuterLeftBrTypeInversed;
+    int nOuterRightBrTypeInversed;
+    int nInnerLeftBrType;
+    int nInnerRightBrType;
+    INT_X pos;
+    BOOL bInnerBracketsSelected;
+    CHARRANGE_X crNewSel;
+
+    // 1. Let's check if there are outer brackets:  [| ... |]
+    left_ch = getCharAt(hWndEdit, crOldSel->cpMin - 1);
+    right_ch = getCharAt(hWndEdit, crOldSel->cpMax);
+
+    nOuterLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT);
+    if (nOuterLeftBrType == tbtNone)
+      nOuterLeftBrTypeInversed = getRightBracketType(left_ch, BTF_HIGHLIGHT);  //  ]| ...
+    else
+      nOuterLeftBrTypeInversed = tbtNone;
+
+    nOuterRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT);
+    if (nOuterRightBrType == tbtNone)
+      nOuterRightBrTypeInversed = getLeftBracketType(right_ch, BTF_HIGHLIGHT);  //  ... |[
+    else
+      nOuterRightBrTypeInversed = tbtNone;
+
+    if (nOuterLeftBrType != tbtNone && nOuterLeftBrType == nOuterRightBrType)
+    {
+      //  [| ... |]  -->  |[ ... ]|
+      crNewSel.cpMin = crOldSel->cpMin - 1;
+      crNewSel.cpMax = crOldSel->cpMax + 1;
+      SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+      return TRUE;
+    }
+
+    // 2. Let's check if there are inner brackets selected:  |[ ... ]|
+    left_ch = getCharAt(hWndEdit, crOldSel->cpMin);
+    right_ch = getCharAt(hWndEdit, crOldSel->cpMax - 1);
+
+    nInnerLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT);
+    nInnerRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT);
+
+    if (nInnerLeftBrType != tbtNone && nInnerLeftBrType == nInnerRightBrType)
+      bInnerBracketsSelected = TRUE;
+    else
+      bInnerBracketsSelected = FALSE;
+
+    // 3. Character position to start from
+    pos = crOldSel->cpMin - 1;
+
+    if (bInnerBracketsSelected)
+    {
+      if (nOuterLeftBrType != tbtNone)  //  (|[ ... ]| ...
+        pos = crOldSel->cpMax + 1;
+      else if (nOuterRightBrType != tbtNone)  //  ... |[ ... ]|)
+        pos = crOldSel->cpMin - 1;
+    }
+
+    // 4. finally, heavy artillery:
+    if ( GetNearestBracketsRange(XBRA_SELTO_NEARBR, gnbrfWiden, pos, &crNewSel) )
+    {
+      if (crNewSel.cpMin <= crOldSel->cpMin && crNewSel.cpMax >= crOldSel->cpMax)
+      {
+        SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+        return TRUE;
+      }
+      if ( bInnerBracketsSelected )
+      {
+        INT_X check_pos;
+
+        if (nOuterLeftBrType != tbtNone || nOuterLeftBrTypeInversed != tbtNone)
+        {
+          if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
+            check_pos = crOldSel->cpMax; // checking for  (|[ ... ]|!{ ... }!
+          else
+            check_pos = crOldSel->cpMax + 1; // checking for  (|[ ... ]|{! ... !}
+          if (crNewSel.cpMin == check_pos)
+          {
+            crNewSel.cpMin = crOldSel->cpMin;
+            if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
+              crNewSel.cpMax += 1;
+            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+            return TRUE;
+          }
+        }
+        if (nOuterRightBrType != tbtNone || nOuterRightBrTypeInversed != tbtNone)
+        {
+          if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
+            check_pos = crOldSel->cpMin; // checking for  !{ ... }!|[ ... ]|)
+          else
+            check_pos = crOldSel->cpMin - 1; // checking for  {! ... !}|[ ... ]|)
+          if (crNewSel.cpMax == check_pos)
+          {
+            crNewSel.cpMax = crOldSel->cpMax;
+            if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
+              crNewSel.cpMin -= 1;
+            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+            return TRUE;
+          }
+        }
+      }
+    }
+  }
+
+  return FALSE;
 }

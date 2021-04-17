@@ -37,6 +37,7 @@
 
 // nearbr selto flags
 #define XBR_NBR_SELTO_OUTERPOS    0x0001
+#define XBR_NBR_SELTO_WIDEN       0x0002
 
 enum eXBracketsAction {
   XBRA_GOTO = 1,
@@ -84,6 +85,8 @@ void  setUserBracketsW(const wchar_t* cszUserBracketsW);
 
 const char*    getCurrentBracketsPairA(void);
 const wchar_t* getCurrentBracketsPairW(void);
+
+BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel); // CHARRANGE_X* crSel
 
 //---------------------------------------------------------------------------
 #endif

@@ -628,7 +628,14 @@ static BOOL DoNearestBracketsAction(const PLUGINDATA *pd, int action)
       OnEditGetNearestBracketsFunc(action, pd->hWndEdit, cr.cpMin);
     }
     else
+    {
+      if ( (action == XBRA_SELTO_NEARBR) && (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_WIDEN) )
+      {
+        if ( WidenNearestBracketsSelection(pd->hWndEdit, &cr) )
+          return TRUE;
+      }
       return InvertCaretPositionInTheSelection(pd->hWndEdit, &cr);
+    }
   }
 
   return FALSE;
