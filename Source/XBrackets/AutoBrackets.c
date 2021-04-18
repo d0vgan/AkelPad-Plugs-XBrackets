@@ -5667,6 +5667,12 @@ const wchar_t* getCurrentBracketsPairW(void)
   return szBracketsPair;
 }
 
+enum eNearestBracketsJoined {
+  nbrjNone = 0,
+  nbrjLeft,
+  nbrjRight
+};
+
 BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
 {
   INT_X pos;
@@ -5679,6 +5685,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
   int nInnerRightBrType;
   int nInnerLeftBrTypeInversed;
   int nInnerRightBrTypeInversed;
+  int nJoined;
   BOOL bInnerBracketsSelected;
   wchar_t left_ch;
   wchar_t right_ch;
@@ -5687,6 +5694,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
 
   crOldSel.cpMin = ((const CHARRANGE_X *) crSel)->cpMin;
   crOldSel.cpMax = ((const CHARRANGE_X *) crSel)->cpMax;
+  nJoined = nbrjNone;
 
   for (;;)
   {
@@ -5734,7 +5742,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     else
       nInnerRightBrTypeInversed = tbtNone;
 
-    if (nInnerLeftBrType != tbtNone && nInnerLeftBrType == nInnerRightBrType)
+    if (nInnerLeftBrType != tbtNone && nInnerLeftBrType == nInnerRightBrType && nJoined == nbrjNone)
       bInnerBracketsSelected = TRUE;
     else
       bInnerBracketsSelected = FALSE;
@@ -5742,7 +5750,15 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     // 3. Character position to start from
     pos = crOldSel.cpMin - 1;
 
-    if (bInnerBracketsSelected)
+    if (nJoined == nbrjRight)
+    {
+      pos = crOldSel.cpMax + 1;
+    }
+    else if (nJoined == nbrjLeft)
+    {
+      pos = crOldSel.cpMin - 1;
+    }
+    else if (bInnerBracketsSelected)
     {
       //  |[ ... ]|
       if (nOuterLeftBrType != tbtNone || nOuterRightBrTypeInversed != tbtNone) //  (|[ ... ]| ...  or  |[ ... ]|( ...
@@ -5777,6 +5793,19 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       {
         SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
         return TRUE;
+      }
+
+      if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
+      {
+        if ( (nInnerLeftBrType != tbtNone && crNewSel.cpMin == crOldSel.cpMin + 1)   //  |[ ...
+          || (nInnerRightBrType != tbtNone && crNewSel.cpMax + 1 == crOldSel.cpMax)  //  ... ]|
+           )
+        {
+          crNewSel.cpMin -= 1;
+          crNewSel.cpMax += 1;
+          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+          return TRUE;
+        }
       }
 
       if ( bInnerBracketsSelected )
@@ -5814,23 +5843,25 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
         }
       }
 
-      if (crNewSel.cpMax < crOldSel.cpMin)
+      if (crNewSel.cpMax <= crOldSel.cpMin)
       {
         //  { ... } |[ ... ]|
         if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
           crOldSel.cpMin = crNewSel.cpMin;  //  !{ ... }! |[ ... ]|
         else
           crOldSel.cpMin = crNewSel.cpMin - 1;  //  {! ... !} |[ ... ]|
+        nJoined = nbrjLeft;
         continue; // next iteration
       }
 
-      if (crNewSel.cpMin > crOldSel.cpMax)
+      if (crNewSel.cpMin >= crOldSel.cpMax)
       {
         //  |[ ... ]| { ... }
         if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
           crOldSel.cpMax = crNewSel.cpMax;  //  |[ ... ]| !{ ... }!
         else
           crOldSel.cpMax = crNewSel.cpMax + 1;  //  |[ ... ]| {! ... !}
+        nJoined = nbrjRight;
         continue; // next iteration
       }
     }
