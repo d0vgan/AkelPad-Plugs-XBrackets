@@ -625,6 +625,10 @@ static BOOL DoNearestBracketsAction(const PLUGINDATA *pd, int action)
     SendMessage(pd->hWndEdit, EM_EXGETSEL_X, 0, (LPARAM) &cr);
     if (cr.cpMin == cr.cpMax)
     {
+      if ( (action == XBRA_SELTO_NEARBR) && (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_WIDEN) )
+      {
+        return WidenNearestBracketsSelection(pd->hWndEdit, &cr);
+      }
       OnEditGetNearestBracketsFunc(action, pd->hWndEdit, cr.cpMin);
     }
     else
