@@ -201,11 +201,11 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     32 - the caret always goes to the right bracket.
     When the sum of (16 + 32) is used, it is treated as 16.
 
-  nearestbr.selto_flags = 0
+  nearestbr.selto_flags = 2
     This option controls the behavior of the SelToNearestBrackets function.
     The value of this option will be the sum of the following numbers:
-    0 - (default) the surrounding brackets themselves are either included or
-        not included in the selection, depending on the position of the caret;
+    0 - the surrounding brackets themselves are either included or not
+        included in the selection, depending on the position of the caret;
     1 - the surrounding brackets are always included in the selection;
     2 - repeated calls of SelToNearestBrackets widen the nearest brackets
         selection (i.e. the selection within brackets becomes the selection

@@ -31,18 +31,16 @@
     " [ "     ]
     ("123")
     (abc)(def)(ghi)
-    (abc) (def) (ghi)
     (abc)  (def)  (ghi)
     (abc) (def)(ghi)
     (abc)(def) (ghi)
     x (abc)(def)(ghi) y
     ((short)(unsigned int)(a)(int))
     ( (short) (unsigned int) ( (a)) (int) )
-    (  (short)  (unsigned int)  (a)  (int)  )
     (  (short)   (unsigned int)   (a)  (int)  )
     (  (abc)(def) (ghi) (abc)(def) (ghi) )
     (  (abc) (def) (ghi) (abc) )
-    (   (  [  ] { }  )    )
+    (   (  [  ] { } ()  )    )
 
 
 Sep 2018

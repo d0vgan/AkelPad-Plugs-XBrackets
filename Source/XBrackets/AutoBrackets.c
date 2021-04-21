@@ -3441,6 +3441,7 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
               --nLeftBrPos;
               ++nRightBrPos;
             }
+            /*
             else if (nLeftBrPos != nRightBrPos)
             {
               // incorrect (next) pair found
@@ -3450,6 +3451,7 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
 
               return FALSE;
             }
+            */
           }
         }
         else
@@ -3465,6 +3467,7 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
       if (flags & gnbrfWiden)
       {
         if ( (nLeftBrPos == nRightBrPos && (bSelToOuterPos || state->crCurrent.cpMin == state->crCurrent.cpMax))  //  "|"  ->  |""|
+          || (nLeftBrPos == state->crCurrent.cpMin && nRightBrPos == state->crCurrent.cpMax)   //  [| ... |]
           || (nLeftBrPos == state->crCurrent.cpMin + 1 && nRightBrPos >= state->crCurrent.cpMax)  //  |[| ... ]  or  |[|]
           || (nLeftBrPos <= state->crCurrent.cpMin && nRightBrPos + 1 == state->crCurrent.cpMax)  //  [ ... |]|  or  [|]|
            )
@@ -3530,7 +3533,20 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
   tGetHighlightIndexesCookie brCookie;
 
   if ( NearestBr_MatchCachedIndexes(action, nCharacterPosition, out_cr) )
+  {
+    if ( flags & gnbrfWiden )
+    {
+      if ( out_cr->cpMin == NearestBracketsIndexes[0] + 1 && out_cr->cpMax == NearestBracketsIndexes[1] ) // raw indexes
+      {
+        if ( curr_cr->cpMin == out_cr->cpMin && curr_cr->cpMax == out_cr->cpMax )  //  [| ... |]
+        {
+          --out_cr->cpMin;
+          ++out_cr->cpMax;
+        }
+      }
+    }
     return TRUE;
+  }
 
   // Note:
   // Now we can not use the cached values of NearestBracketsIndexes
@@ -5725,17 +5741,72 @@ const wchar_t* getCurrentBracketsPairW(void)
   return szBracketsPair;
 }
 
-enum eNearestBracketsJoined {
+enum eNearestBracketsJoinResult {
   nbrjNone = 0,
-  nbrjLeft,
-  nbrjRight
+  nbrjApplyJoinedLeft,
+  nbrjApplyJoinedRight,
+  nbrjJoinedLeft,
+  nbrjJoinedRight
 };
+
+int JoinNearestBracketsRanges(const CHARRANGE_X* crOldSel, CHARRANGE_X* crJoinSel)
+{
+  if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
+  {
+    //  {| ... |}  ->  |{ ... }|
+    --crJoinSel->cpMin;
+    ++crJoinSel->cpMax;
+  }
+
+  if (crJoinSel->cpMax == crOldSel->cpMin)
+  {
+    //  { ... }|[ ... ]|
+    crJoinSel->cpMax = crOldSel->cpMax;
+    return nbrjApplyJoinedLeft;
+  }
+
+  if (crJoinSel->cpMax < crOldSel->cpMin)
+  {
+    //  { ... } |[ ... ]|
+    crJoinSel->cpMax = crOldSel->cpMax;
+    return nbrjJoinedLeft;
+  }
+
+  if (crJoinSel->cpMin == crOldSel->cpMax)
+  {
+    //  |[ ... ]|{ ... }
+    crJoinSel->cpMin = crOldSel->cpMin;
+    return nbrjApplyJoinedRight;
+  }
+
+  if (crJoinSel->cpMin > crOldSel->cpMax)
+  {
+    //  |[ ... ]| { ... }
+    crJoinSel->cpMin = crOldSel->cpMin;
+    return nbrjJoinedRight;
+  }
+
+  if (crJoinSel->cpMin < crOldSel->cpMin && crJoinSel->cpMax >= crOldSel->cpMin && crJoinSel->cpMax <= crOldSel->cpMax)
+  {
+    // left intersection:  (  [| ) |]  or  (  [ |)| ]  or  ([|)|]
+    crJoinSel->cpMax = crOldSel->cpMax;
+    return nbrjJoinedLeft;
+  }
+
+  if (crJoinSel->cpMin >= crOldSel->cpMin && crJoinSel->cpMin <= crOldSel->cpMax && crJoinSel->cpMax > crOldSel->cpMax)
+  {
+    // right intersection:  [| ( |]  )  or  [ |(| ]  )  or  [|(|])
+    crJoinSel->cpMin = crOldSel->cpMin;
+    return nbrjJoinedRight;
+  }
+
+  return nbrjNone;
+}
 
 BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
 {
   INT_X pos;
   INT_X pos_outer;
-  INT_X check_pos;
   int nOuterLeftBrType;
   int nOuterRightBrType;
   int nOuterLeftBrTypeInversed;
@@ -5751,6 +5822,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
   CHARRANGE_X crOldSel;
   CHARRANGE_X crNewSel;
   CHARRANGE_X crNewSelOuter;
+  CHARRANGE_X crJoinSel;
 
   crOldSel.cpMin = ((const CHARRANGE_X *) crSel)->cpMin;
   crOldSel.cpMax = ((const CHARRANGE_X *) crSel)->cpMax;
@@ -5778,16 +5850,6 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       nOuterRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT);
       if (nOuterRightBrType == tbtNone)
         nOuterRightBrTypeInversed = getLeftBracketType(right_ch, BTF_HIGHLIGHT);  //  ... |[
-    }
-
-    if ( nOuterLeftBrType != tbtNone && nOuterLeftBrType == nOuterRightBrType &&
-         !isDuplicatedPair(nOuterLeftBrType) )
-    {
-      //  [| ... |]  -->  |[ ... ]|
-      crNewSel.cpMin = crOldSel.cpMin - 1;
-      crNewSel.cpMax = crOldSel.cpMax + 1;
-      SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-      return TRUE;
     }
 
     // 2. Let's check if there are inner brackets selected:  |[ ... ]|
@@ -5829,11 +5891,11 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     pos = crOldSel.cpMin;
     pos_outer = -1; // outer pos for a second try
 
-    if (nJoined == nbrjRight)
+    if (nJoined == nbrjJoinedRight)
     {
         pos = crOldSel.cpMax + 1;
     }
-    else if (nJoined == nbrjLeft)
+    else if (nJoined == nbrjJoinedLeft)
     {
         pos = (crOldSel.cpMin != 0) ? (crOldSel.cpMin - 1) : (crOldSel.cpMax + 1);
     }
@@ -5945,16 +6007,17 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     // 4. finally, heavy artillery:
     if ( GetNearestBracketsRange(XBRA_SELTO_NEARBR, gnbrfWiden, pos, &crOldSel, &crNewSel) )
     {
-      crNewSelOuter.cpMin = -1;
-      crNewSelOuter.cpMax = -1;
-
       if ((crNewSel.cpMin < crOldSel.cpMin && crNewSel.cpMax >= crOldSel.cpMax) ||
           (crNewSel.cpMin <= crOldSel.cpMin && crNewSel.cpMax > crOldSel.cpMax))
       {
         SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
         return TRUE;
       }
-      else if (pos_outer != -1)
+
+      crNewSelOuter.cpMin = -1;
+      crNewSelOuter.cpMax = -1;
+
+      if (pos_outer != -1)
       {
         if ( GetNearestBracketsRange(XBRA_SELTO_NEARBR, gnbrfWiden, pos_outer, &crOldSel, &crNewSelOuter) )
         {
@@ -5979,163 +6042,67 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
         return FALSE;
       }
 
-      if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
+      crJoinSel.cpMin = crNewSel.cpMin;
+      crJoinSel.cpMax = crNewSel.cpMax;
+      nJoined = JoinNearestBracketsRanges(&crOldSel, &crJoinSel);
+      if (nJoined == nbrjApplyJoinedLeft)
       {
-        /*
-        if (nOuterLeftBrType != tbtNone && nOuterLeftBrType == nOuterRightBrType)  // |[ ... ]|
+        if (nInnerRightBrType != tbtNone)
         {
-          if (crNewSel.cpMin == crOldSel.cpMin && crNewSel.cpMax == crOldSel.cpMax)
-          {
-            crNewSel.cpMin -= 1;
-            crNewSel.cpMax += 1;
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-            return TRUE;
-          }
-        }
-        if ( (nInnerLeftBrType != tbtNone && crNewSel.cpMin == crOldSel.cpMin + 1)   //  |[ ...
-          || (nInnerRightBrType != tbtNone && crNewSel.cpMax + 1 == crOldSel.cpMax)  //  ... ]|
-           )
-        {
-          crNewSel.cpMin -= 1;
-          crNewSel.cpMax += 1;
-          if ((crNewSel.cpMin < crOldSel.cpMin && crNewSel.cpMax >= crOldSel.cpMax) ||
-              (crNewSel.cpMin <= crOldSel.cpMin && crNewSel.cpMax > crOldSel.cpMax))
-          {
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-            return TRUE;
-          }
-        }
-        */
-        if (nInnerLeftBrType != tbtNone && nInnerRightBrType != tbtNone)
-        {
-          if (crOldSel.cpMax + 1 == crNewSel.cpMin)  //  |( ... ]|{ ... }
-          {
-            // joining the right brackets pair
-            crNewSel.cpMin = crOldSel.cpMin;
-            ++crNewSel.cpMax;
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-            return TRUE;
-          }
-          if (crOldSel.cpMin == crNewSel.cpMax + 1)  //  { ... }|[ ... )|
-          {
-            // joining the left brackets pair
-            --crNewSel.cpMin;
-            crNewSel.cpMax = crOldSel.cpMax;
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-            return TRUE;
-          }
-        }
-      }
-
-      if ( bInnerBracketsSelected )
-      {
-        if (nOuterLeftBrType != tbtNone || nOuterRightBrTypeInversed != tbtNone)
-        {
-          if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
-            check_pos = crOldSel.cpMax; // checking for  (|[ ... ]|!{ ... }!  or  ... |[ ... ]|!{ ... }!
-          else
-            check_pos = crOldSel.cpMax + 1; // checking for  (|[ ... ]|{! ... !}  or  ... |[ ... ]|{! ... !}
-          if (crNewSel.cpMin == check_pos)
-          {
-            crNewSel.cpMin = crOldSel.cpMin;
-            if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
-              crNewSel.cpMax += 1;
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-            return TRUE;
-          }
-        }
-
-        if (nOuterRightBrType != tbtNone || nOuterLeftBrTypeInversed != tbtNone)
-        {
-          if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
-            check_pos = crOldSel.cpMin; // checking for  !{ ... }!|[ ... ]|)  or  !{ ... }!|[ ... ]| ...
-          else
-            check_pos = crOldSel.cpMin - 1; // checking for  {! ... !}|[ ... ]|)  or  {! ... !}|[ ... ]| ...
-          if (crNewSel.cpMax == check_pos)
-          {
-            crNewSel.cpMax = crOldSel.cpMax;
-            if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
-              crNewSel.cpMin -= 1;
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-            return TRUE;
-          }
-        }
-      }
-
-      if (crNewSel.cpMax <= crOldSel.cpMin)
-      {
-        //  { ... } |[ ... ]|
-        if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
-          crOldSel.cpMin = crNewSel.cpMin;  //  !{ ... }! |[ ... ]|
-        else
-          crOldSel.cpMin = crNewSel.cpMin - 1;  //  {! ... !} |[ ... ]|
-        nJoined = nbrjLeft;
-        continue; // next iteration
-      }
-
-      if (crNewSel.cpMin >= crOldSel.cpMax)
-      {
-        //  |[ ... ]| { ... }
-        if (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS)
-          crOldSel.cpMax = crNewSel.cpMax;  //  |[ ... ]| !{ ... }!
-        else
-          crOldSel.cpMax = crNewSel.cpMax + 1;  //  |[ ... ]| {! ... !}
-        nJoined = nbrjRight;
-        continue; // next iteration
-      }
-
-      if (crNewSelOuter.cpMin != -1 && crNewSelOuter.cpMax != -1)
-      {
-        if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
-        {
-          --crNewSelOuter.cpMin;
-          ++crNewSelOuter.cpMax;
-        }
-
-        if (crNewSelOuter.cpMax <= crOldSel.cpMin)
-        {
-          //  { ... } |[ ... ]|
-          crNewSelOuter.cpMax = crOldSel.cpMax;
-          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSelOuter);
+          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
           return TRUE;
         }
-
-        if (crNewSelOuter.cpMin >= crOldSel.cpMax)
+        else
+          nJoined = nbrjJoinedLeft;
+      }
+      if (nJoined == nbrjApplyJoinedRight)
+      {
+        if (nInnerLeftBrType != tbtNone)
         {
-          //  |[ ... ]| { ... }
-          crNewSelOuter.cpMin = crOldSel.cpMin;
-          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSelOuter);
+          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
           return TRUE;
         }
+        else
+          nJoined = nbrjJoinedRight;
+      }
+      if (nJoined == nbrjJoinedLeft || nJoined == nbrjJoinedRight)
+      {
+        crOldSel.cpMin = crJoinSel.cpMin;
+        crOldSel.cpMax = crJoinSel.cpMax;
+        continue;
+      }
 
-        pos = -1;
-
-        if (crNewSelOuter.cpMin < crOldSel.cpMin && 
-            crNewSelOuter.cpMax >= crOldSel.cpMin &&
-            crNewSelOuter.cpMax <= crOldSel.cpMax)
+      if ( (crNewSelOuter.cpMin != -1 && crNewSelOuter.cpMax != -1) &&
+           (crNewSelOuter.cpMin != crNewSel.cpMin || crNewSelOuter.cpMax != crNewSel.cpMax) )
+      {
+        crJoinSel.cpMin = crNewSelOuter.cpMin;
+        crJoinSel.cpMax = crNewSelOuter.cpMax;
+        nJoined = JoinNearestBracketsRanges(&crOldSel, &crJoinSel);
+        if (nJoined == nbrjApplyJoinedLeft)
         {
-          // left intersection:  (  [| ) |]  or  (  [ |)| ]  or  ([|)|]
-          pos = crNewSelOuter.cpMin - 1;
-        }
-        else if (crNewSelOuter.cpMin >= crOldSel.cpMin &&
-                 crNewSelOuter.cpMin <= crOldSel.cpMax &&
-                 crNewSelOuter.cpMax > crOldSel.cpMax)
-        {
-          // right intersection:  [| ( |]  )  or  [ |(| ]  )  or  [|(|])
-          pos = crNewSelOuter.cpMax + 1;
-        }
-
-        if (pos >= 0)
-        {
-          if ( GetNearestBracketsRange(XBRA_SELTO_NEARBR, gnbrfWiden, pos, &crOldSel, &crNewSelOuter) )
+          if (nInnerRightBrType != tbtNone)
           {
-            if ((crNewSelOuter.cpMin < crOldSel.cpMin && crNewSelOuter.cpMax >= crOldSel.cpMax) ||
-                (crNewSelOuter.cpMin <= crOldSel.cpMin && crNewSelOuter.cpMax > crOldSel.cpMax))
-            {
-              SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSelOuter);
-              return TRUE;
-            }
+            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
+            return TRUE;
           }
+          else
+            nJoined = nbrjJoinedLeft;
+        }
+        if (nJoined == nbrjApplyJoinedRight)
+        {
+          if (nInnerLeftBrType != tbtNone)
+          {
+            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
+            return TRUE;
+          }
+          else
+            nJoined = nbrjJoinedRight;
+        }
+        if (nJoined == nbrjJoinedLeft || nJoined == nbrjJoinedRight)
+        {
+          crOldSel.cpMin = crJoinSel.cpMin;
+          crOldSel.cpMax = crJoinSel.cpMax;
+          continue;
         }
       }
     }
