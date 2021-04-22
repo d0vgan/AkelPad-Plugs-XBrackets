@@ -2591,167 +2591,6 @@ enum eFoldQuoteFlags {
   fqfDoNotCheckQuote = 0x2000
 };
 
-static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPosition, const INT_X nTextLength,
-                                                   int* out_nBrType, int* out_nDupDirection)
-{
-  INT_X nPos;
-  INT_X nLen;
-  int nBrType = tbtNone;
-  int nDupDir = DP_NONE;
-  int nDetectBrType = tbtNone;
-  unsigned int nDetectBrAtPos = abcNone;
-  unsigned int uFlags;
-  wchar_t wch[4] = { 0, 0, 0, 0 }; // { prev_wch, current_wch, 0, 0 }
-
-  *out_nBrType = tbtNone;
-  *out_nDupDirection = DP_NONE;
-
-  if ( nCharacterPosition == 0 )
-  {
-    nPos = 0;
-    if ( nTextLength == 0 )
-      nLen = 0; // { 0, 0 }
-    else
-      nLen = 1; // { 0, current_wch }
-  }
-  else
-  {
-    nPos = nCharacterPosition - 1;
-    nLen = nTextLength - nPos;
-    if ( nLen > 2 )
-      nLen = 2; // { prev_wch, current_wch }
-  }
-
-  if ( g_bOldWindows )
-  {
-    char ch[4] = { 0, 0, 0, 0 };
-    AnyRichEdit_GetTextAt(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? ch + 1 : ch);
-    wch[0] = char2wchar(ch[0]);
-    wch[1] = char2wchar(ch[1]);
-  }
-  else
-  {
-    AnyRichEdit_GetTextAtW(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? wch + 1 : wch);
-  }
-
-  if ( wch[0] != 0 )
-  {
-    uFlags = BTF_HIGHLIGHT;
-    if ( wch[1] != 0 && wch[1] != L'\r' )
-      uFlags |= BTF_CHECK_TAGINV;
-    nBrType = getLeftBracketTypeEx(wch[0], uFlags); // prev_wch
-    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition - 1) ) //  (|
-    {
-      if ( isDuplicatedPair(nBrType) )
-      {
-        nDupDir = getDuplicatedPairDirection(nCharacterPosition - 1, wch[0]);
-        if ( nDupDir == DP_FORWARD || nDupDir == DP_MAYBEFORWARD )
-        {
-          *out_nDupDirection = nDupDir;
-        }
-        else if ( nDupDir == DP_DETECT )
-        {
-          nDetectBrAtPos = abcBrIsOnLeft;
-          nDetectBrType = nBrType;
-          nBrType = tbtNone;
-        }
-        else
-          nBrType = tbtNone;
-      }
-      if ( nBrType != tbtNone )
-      {
-        *out_nBrType = nBrType;
-        return (abcLeftBr | abcBrIsOnLeft);
-      }
-    }
-  }
-
-  if ( wch[1] != 0 )
-  {
-    uFlags = BTF_HIGHLIGHT; // not using BTF_CHECK_TAGINV in case of  |>
-    nBrType = getLeftBracketTypeEx(wch[1], uFlags); // current_wch
-    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition) ) //  |(
-    {
-      if ( isDuplicatedPair(nBrType) )
-      {
-        nDupDir = getDuplicatedPairDirection(nCharacterPosition, wch[1]);
-        if ( nDupDir == DP_FORWARD || nDupDir == DP_MAYBEFORWARD )
-        {
-          *out_nDupDirection = nDupDir;
-        }
-        else if ( nDupDir == DP_DETECT )
-        {
-          nDetectBrAtPos = abcBrIsOnRight;
-          nDetectBrType = nBrType;
-          nBrType = tbtNone;
-        }
-        else
-          nBrType = tbtNone;
-      }
-      if ( nBrType != tbtNone )
-      {
-        *out_nBrType = nBrType;
-        return (abcLeftBr | abcBrIsOnRight);
-      }
-    }
-  }
-
-  if ( wch[1] != 0 )
-  {
-    uFlags = BTF_HIGHLIGHT;
-    if ( wch[0] != 0 && wch[0] != L'\r' )
-      uFlags |= BTF_CHECK_TAGINV;
-    nBrType = getRightBracketTypeEx(wch[1], uFlags); // current_wch
-    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition) ) //  |)
-    {
-      if ( isDuplicatedPair(nBrType) )
-      {
-        nDupDir = getDuplicatedPairDirection(nCharacterPosition, wch[1]);
-        if ( nDupDir == DP_BACKWARD || nDupDir == DP_MAYBEBACKWARD )
-          *out_nDupDirection = nDupDir;
-        else
-          nBrType = tbtNone;
-      }
-      if ( nBrType != tbtNone )
-      {
-        *out_nBrType = nBrType;
-        return (abcRightBr | abcBrIsOnRight);
-      }
-    }
-  }
-
-  if ( wch[0] != 0 )
-  {
-    uFlags = BTF_HIGHLIGHT; // not using BTF_CHECK_TAGINV in case of  <|
-    nBrType = getRightBracketTypeEx(wch[0], uFlags); // prev_wch
-    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition - 1) ) //  )|
-    {
-      if ( isDuplicatedPair(nBrType) )
-      {
-        nDupDir = getDuplicatedPairDirection(nCharacterPosition - 1, wch[0]);
-        if ( nDupDir == DP_BACKWARD || nDupDir == DP_MAYBEBACKWARD )
-          *out_nDupDirection = nDupDir;
-        else
-          nBrType = tbtNone;
-      }
-      if ( nBrType != tbtNone )
-      {
-        *out_nBrType = nBrType;
-        return (abcRightBr | abcBrIsOnLeft);
-      }
-    }
-  }
-
-  if ( nDetectBrType != tbtNone )
-  {
-    *out_nBrType = nDetectBrType;
-    *out_nDupDirection = DP_DETECT;
-    return (abcDetectBr | nDetectBrAtPos);
-  }
-
-  return (abcNone);
-}
-
 static BOOL NearestBr_GetFoldOrQuoteFromAkelEdit(const INT_X nPos, const unsigned int nAtBrFQFlags, tGetHighlightIndexesCookie* out_brCookie)
 {
   out_brCookie->nResult = ghlrNone;
@@ -2847,6 +2686,184 @@ static BOOL NearestBr_GetFoldOrQuoteFromAkelEdit(const INT_X nPos, const unsigne
   }
 
   return (out_brCookie->nResult == ghlrPair);
+}
+
+static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPosition, const INT_X nTextLength,
+                                                   int* out_nBrType, int* out_nDupDirection)
+{
+  INT_X nPos;
+  INT_X nLen;
+  int nBrType = tbtNone;
+  int nDupDir = DP_NONE;
+  int nDetectBrType = tbtNone;
+  unsigned int nDetectBrAtPos = abcNone;
+  unsigned int uFlags;
+  wchar_t wch[4] = { 0, 0, 0, 0 }; // { prev_wch, current_wch, 0, 0 }
+  tGetHighlightIndexesCookie c;
+
+  *out_nBrType = tbtNone;
+  *out_nDupDirection = DP_NONE;
+
+  if ( nCharacterPosition == 0 )
+  {
+    nPos = 0;
+    if ( nTextLength == 0 )
+      nLen = 0; // { 0, 0 }
+    else
+      nLen = 1; // { 0, current_wch }
+  }
+  else
+  {
+    nPos = nCharacterPosition - 1;
+    nLen = nTextLength - nPos;
+    if ( nLen > 2 )
+      nLen = 2; // { prev_wch, current_wch }
+  }
+
+  if ( g_bOldWindows )
+  {
+    char ch[4] = { 0, 0, 0, 0 };
+    AnyRichEdit_GetTextAt(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? ch + 1 : ch);
+    wch[0] = char2wchar(ch[0]);
+    wch[1] = char2wchar(ch[1]);
+  }
+  else
+  {
+    AnyRichEdit_GetTextAtW(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? wch + 1 : wch);
+  }
+
+  if ( wch[0] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT;
+    if ( wch[1] != 0 && wch[1] != L'\r' )
+      uFlags |= BTF_CHECK_TAGINV;
+    nBrType = getLeftBracketTypeEx(wch[0], uFlags); // prev_wch
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition - 1) ) //  (|
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nCharacterPosition, abcDetectBr | abcBrIsOnLeft | fqfDoNotCheckFold, &c) )
+        {
+          if ( c.pos1 == nCharacterPosition )
+            return (abcLeftBr | abcBrIsOnLeft);
+          if ( c.pos2 == nCharacterPosition - 1 )
+            return (abcRightBr | abcBrIsOnLeft);
+        }
+
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition - 1, wch[0]);
+        if ( nDupDir == DP_FORWARD || nDupDir == DP_MAYBEFORWARD )
+        {
+          *out_nDupDirection = nDupDir;
+        }
+        else if ( nDupDir == DP_DETECT )
+        {
+          nDetectBrAtPos = abcBrIsOnLeft;
+          nDetectBrType = nBrType;
+          nBrType = tbtNone;
+        }
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcLeftBr | abcBrIsOnLeft);
+      }
+    }
+  }
+
+  if ( wch[1] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT; // not using BTF_CHECK_TAGINV in case of  |>
+    nBrType = getLeftBracketTypeEx(wch[1], uFlags); // current_wch
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition) ) //  |(
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nCharacterPosition, abcDetectBr | abcBrIsOnRight | fqfDoNotCheckFold, &c) )
+        {
+          if ( c.pos1 == nCharacterPosition + 1 )
+            return (abcLeftBr | abcBrIsOnRight);
+          if ( c.pos2 == nCharacterPosition )
+            return (abcRightBr | abcBrIsOnRight);
+        }
+
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition, wch[1]);
+        if ( nDupDir == DP_FORWARD || nDupDir == DP_MAYBEFORWARD )
+        {
+          *out_nDupDirection = nDupDir;
+        }
+        else if ( nDupDir == DP_DETECT )
+        {
+          nDetectBrAtPos = abcBrIsOnRight;
+          nDetectBrType = nBrType;
+          nBrType = tbtNone;
+        }
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcLeftBr | abcBrIsOnRight);
+      }
+    }
+  }
+
+  if ( wch[1] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT;
+    if ( wch[0] != 0 && wch[0] != L'\r' )
+      uFlags |= BTF_CHECK_TAGINV;
+    nBrType = getRightBracketTypeEx(wch[1], uFlags); // current_wch
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition) ) //  |)
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition, wch[1]);
+        if ( nDupDir == DP_BACKWARD || nDupDir == DP_MAYBEBACKWARD )
+          *out_nDupDirection = nDupDir;
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcRightBr | abcBrIsOnRight);
+      }
+    }
+  }
+
+  if ( wch[0] != 0 )
+  {
+    uFlags = BTF_HIGHLIGHT; // not using BTF_CHECK_TAGINV in case of  <|
+    nBrType = getRightBracketTypeEx(wch[0], uFlags); // prev_wch
+    if ( nBrType != tbtNone && !isEscapedPosEx(nCharacterPosition - 1) ) //  )|
+    {
+      if ( isDuplicatedPair(nBrType) )
+      {
+        nDupDir = getDuplicatedPairDirection(nCharacterPosition - 1, wch[0]);
+        if ( nDupDir == DP_BACKWARD || nDupDir == DP_MAYBEBACKWARD )
+          *out_nDupDirection = nDupDir;
+        else
+          nBrType = tbtNone;
+      }
+      if ( nBrType != tbtNone )
+      {
+        *out_nBrType = nBrType;
+        return (abcRightBr | abcBrIsOnLeft);
+      }
+    }
+  }
+
+  if ( nDetectBrType != tbtNone )
+  {
+    *out_nBrType = nDetectBrType;
+    *out_nDupDirection = DP_DETECT;
+    return (abcDetectBr | nDetectBrAtPos);
+  }
+
+  return (abcNone);
 }
 
 #define XBR_NEARESTBR_OCC_ITEMS 4
@@ -5743,10 +5760,12 @@ const wchar_t* getCurrentBracketsPairW(void)
 
 enum eNearestBracketsJoinResult {
   nbrjNone = 0,
-  nbrjApplyJoinedLeft,
-  nbrjApplyJoinedRight,
-  nbrjJoinedLeft,
-  nbrjJoinedRight
+  nbrjLeftNearby,
+  nbrjRightNearby,
+  nbrjLeftDistant,
+  nbrjRightDistant,
+  nbrjLeftIntersected,
+  nbrjRightIntersected
 };
 
 int JoinNearestBracketsRanges(const CHARRANGE_X* crOldSel, CHARRANGE_X* crJoinSel)
@@ -5762,42 +5781,42 @@ int JoinNearestBracketsRanges(const CHARRANGE_X* crOldSel, CHARRANGE_X* crJoinSe
   {
     //  { ... }|[ ... ]|
     crJoinSel->cpMax = crOldSel->cpMax;
-    return nbrjApplyJoinedLeft;
+    return nbrjLeftNearby;
   }
 
   if (crJoinSel->cpMax < crOldSel->cpMin)
   {
     //  { ... } |[ ... ]|
     crJoinSel->cpMax = crOldSel->cpMax;
-    return nbrjJoinedLeft;
+    return nbrjLeftDistant;
   }
 
   if (crJoinSel->cpMin == crOldSel->cpMax)
   {
     //  |[ ... ]|{ ... }
     crJoinSel->cpMin = crOldSel->cpMin;
-    return nbrjApplyJoinedRight;
+    return nbrjRightNearby;
   }
 
   if (crJoinSel->cpMin > crOldSel->cpMax)
   {
     //  |[ ... ]| { ... }
     crJoinSel->cpMin = crOldSel->cpMin;
-    return nbrjJoinedRight;
+    return nbrjRightDistant;
   }
 
   if (crJoinSel->cpMin < crOldSel->cpMin && crJoinSel->cpMax >= crOldSel->cpMin && crJoinSel->cpMax <= crOldSel->cpMax)
   {
     // left intersection:  (  [| ) |]  or  (  [ |)| ]  or  ([|)|]
     crJoinSel->cpMax = crOldSel->cpMax;
-    return nbrjJoinedLeft;
+    return nbrjLeftIntersected;
   }
 
   if (crJoinSel->cpMin >= crOldSel->cpMin && crJoinSel->cpMin <= crOldSel->cpMax && crJoinSel->cpMax > crOldSel->cpMax)
   {
     // right intersection:  [| ( |]  )  or  [ |(| ]  )  or  [|(|])
     crJoinSel->cpMin = crOldSel->cpMin;
-    return nbrjJoinedRight;
+    return nbrjRightIntersected;
   }
 
   return nbrjNone;
@@ -5816,6 +5835,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
   int nInnerLeftBrTypeInversed;
   int nInnerRightBrTypeInversed;
   int nJoined;
+  BOOL bJoinedNearbyOnly;
   BOOL bInnerBracketsSelected;
   wchar_t left_ch;
   wchar_t right_ch;
@@ -5827,6 +5847,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
   crOldSel.cpMin = ((const CHARRANGE_X *) crSel)->cpMin;
   crOldSel.cpMax = ((const CHARRANGE_X *) crSel)->cpMax;
   nJoined = nbrjNone;
+  bJoinedNearbyOnly = TRUE;
 
   for (;;)
   {
@@ -5891,11 +5912,11 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     pos = crOldSel.cpMin;
     pos_outer = -1; // outer pos for a second try
 
-    if (nJoined == nbrjJoinedRight)
+    if (nJoined == nbrjRightNearby || nJoined == nbrjRightDistant || nJoined == nbrjRightIntersected)
     {
         pos = crOldSel.cpMax + 1;
     }
-    else if (nJoined == nbrjJoinedLeft)
+    else if (nJoined == nbrjLeftNearby || nJoined == nbrjLeftDistant || nJoined == nbrjLeftIntersected)
     {
         pos = (crOldSel.cpMin != 0) ? (crOldSel.cpMin - 1) : (crOldSel.cpMax + 1);
     }
@@ -5958,7 +5979,10 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
           //  |[ ... |  or  "|[ ... |  or  |[ ... |"
           //  |[ ... )|  or  |[ ... (|
           pos = crOldSel.cpMin;  //  |[ ... {} ... |  or  |[ ... ( ... )|
-          pos_outer = (crOldSel.cpMin != 0) ? crOldSel.cpMin - 1 : crOldSel.cpMax + 1;  //  |[ ... ] ... |  or  |[ ... ] ... (|
+          if (nOuterRightBrTypeInversed == tbtNone)
+            pos_outer = (crOldSel.cpMin != 0) ? crOldSel.cpMin - 1 : crOldSel.cpMax + 1;  //  |[ ... ] ... |  or  |[ ... ] ... (|
+          else
+            pos_outer = crOldSel.cpMax;  //  |[ ... |{
         }
         else if (nInnerLeftBrTypeInversed != tbtNone)
         {
@@ -6045,30 +6069,20 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       crJoinSel.cpMin = crNewSel.cpMin;
       crJoinSel.cpMax = crNewSel.cpMax;
       nJoined = JoinNearestBracketsRanges(&crOldSel, &crJoinSel);
-      if (nJoined == nbrjApplyJoinedLeft)
+      if (bJoinedNearbyOnly)
       {
-        if (nInnerRightBrType != tbtNone)
+        if ( (nJoined == nbrjLeftNearby && nInnerRightBrType != tbtNone) ||
+             (nJoined == nbrjRightNearby && nInnerLeftBrType != tbtNone) )
         {
           SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
           return TRUE;
         }
-        else
-          nJoined = nbrjJoinedLeft;
       }
-      if (nJoined == nbrjApplyJoinedRight)
-      {
-        if (nInnerLeftBrType != tbtNone)
-        {
-          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
-          return TRUE;
-        }
-        else
-          nJoined = nbrjJoinedRight;
-      }
-      if (nJoined == nbrjJoinedLeft || nJoined == nbrjJoinedRight)
+      if (nJoined != nbrjNone)
       {
         crOldSel.cpMin = crJoinSel.cpMin;
         crOldSel.cpMax = crJoinSel.cpMax;
+        bJoinedNearbyOnly = FALSE;
         continue;
       }
 
@@ -6078,30 +6092,20 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
         crJoinSel.cpMin = crNewSelOuter.cpMin;
         crJoinSel.cpMax = crNewSelOuter.cpMax;
         nJoined = JoinNearestBracketsRanges(&crOldSel, &crJoinSel);
-        if (nJoined == nbrjApplyJoinedLeft)
+        if (bJoinedNearbyOnly)
         {
-          if (nInnerRightBrType != tbtNone)
+          if ( (nJoined == nbrjLeftNearby && nInnerRightBrType != tbtNone) ||
+               (nJoined == nbrjRightNearby && nInnerLeftBrType != tbtNone) )
           {
             SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
             return TRUE;
           }
-          else
-            nJoined = nbrjJoinedLeft;
         }
-        if (nJoined == nbrjApplyJoinedRight)
-        {
-          if (nInnerLeftBrType != tbtNone)
-          {
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
-            return TRUE;
-          }
-          else
-            nJoined = nbrjJoinedRight;
-        }
-        if (nJoined == nbrjJoinedLeft || nJoined == nbrjJoinedRight)
+        if (nJoined != nbrjNone)
         {
           crOldSel.cpMin = crJoinSel.cpMin;
           crOldSel.cpMax = crJoinSel.cpMax;
+          bJoinedNearbyOnly = FALSE;
           continue;
         }
       }

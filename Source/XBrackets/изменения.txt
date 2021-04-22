@@ -12,35 +12,25 @@
   GetNearestBracketsRange, на которой основана OnEditGetNearestBracketsFunc.
   Введён флаг gnbrfWiden, влияющий на логику обнаружения ближайших скобок.
   Проверочные примеры для WidenNearestBracketsSelection:
-    (   (  [  ] { }  )    )
-    (   (  [  ] { }  )""[]    )
-    (   (  [  ] { }  )" "[ ]    )
-    (   " "(  [  ] { }  )" "[ ]    )
-    (   (  [  ] { }  )" "[ ]" "    )
-    (   " "(  [  ] { }  )" "[ ]" "    )
-    {}()""
-    ""{}()""
-    {}()""[][]
-    {}""()""[]""[]
-    ({}()"")
-    x "A_B=", "/CD=" y
+    (   (  [  ] { }  )    )   (   (  [  ] { }  )""[]    )
+    (   (  [  ] { }  )" "[ ]    )  (   " "(  [  ] { }  )" "[ ]    )
+    (   (  [  ] { }  )" "[ ]" "    ) (   " "(  [  ] { }  )" "[ ]" "    )
+    {}()"" ""{}()""  {}()""[][] {}""()""[]""[]
+    ({}()"")    (   (  [  ] { } ()  )    )
+    x "A_B=", "/CD=" y   {  [  (){} ()""  ]  {}()[]{}{}()[]  }
     "A B C" D" {
     x ["[A_B=]", "/CD=" y]
     "123" }
-    ( . {D F})
-    " [ "     ]
-    ("123")
-    (abc)(def)(ghi)
-    (abc)  (def)  (ghi)
-    (abc) (def)(ghi)
-    (abc)(def) (ghi)
+    ( . {D F})   ("123")
+    " [ "     ]      ()   []
+    (abc)(def)(ghi) (abc)  (def)  (ghi)
+    (abc) (def)(ghi)   (abc)(def) (ghi)
     x (abc)(def)(ghi) y
     ((short)(unsigned int)(a)(int))
     ( (short) (unsigned int) ( (a)) (int) )
     (  (short)   (unsigned int)   (a)  (int)  )
     (  (abc)(def) (ghi) (abc)(def) (ghi) )
     (  (abc) (def) (ghi) (abc) )
-    (   (  [  ] { } ()  )    )
 
 
 Sep 2018
