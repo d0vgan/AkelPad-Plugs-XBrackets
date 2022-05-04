@@ -1,4 +1,19 @@
-﻿Apr 2021
+﻿May 2022
+--------
++ улучшено: теперь bAkelPadIsStarting устанавливается по AKDN_MAIN_ONSTART_PRESHOW
+  и снимается по AKDN_MAIN_ONSTART_FINISH.
+  Добавлен bIsMainWindowShown, который устанавливается по AKDN_MAIN_ONSTART_SHOW
+  либо из функций плагина при (!pd->bOnStart).
+  Почему это важно: не имеет смысла считывать информацию про скобки и перерисовывать
+  их до обработки AKDN_MAIN_ONSTART_FINISH. Тем более что плагин Sessions открывает
+  файлы из сессии по событию AKDN_MAIN_ONSTART_SHOW. А мы хотим исключить перерисовку
+  скобок во время открытия файлов сессии.
+
++ улучшено: теперь OnEditGetActiveBrackets принимает 3 параметра вместо структуры,
+  в которой всё равно не использовались два поля.
+
+
+Apr 2021
 --------
 + исправлено: в NearestBr_ApplyStateToRange добавлена проверка условия
   state->nLeftBrPos < state->nRightBrPos, потому что вызванная перед ней
