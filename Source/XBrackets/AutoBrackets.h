@@ -62,7 +62,7 @@ void  OnEditCharPressed(MSGINFO* pmsgi);
 // For both brackets auto-completion and active brackets highlight.
 // Mostly used for active brackets highlight.
 // Uses "cached" brackets data if it exists.
-void  OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags /* = XBR_GBF_HIGHLIGHTBR */);
+void  OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags /* = XBR_GBF_HIGHLIGHTBR */);
 
 // Highlights active brackets.
 // Mostly this function is called from OnEditGetActiveBrackets.

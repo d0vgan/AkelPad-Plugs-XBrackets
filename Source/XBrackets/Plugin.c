@@ -36,6 +36,7 @@ static LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 static LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 static void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+static void updatePluginGlobalState(PLUGINDATA* pd);
 static void updatePluginData(PLUGINDATA* pd);
 static void ReadOptions(void);
 static void SaveOptions(void);
@@ -76,6 +77,7 @@ BOOL         bBracketsSkipComment1 = FALSE;
 BOOL         bGoToMatchingBracketTriggered = FALSE;
 BOOL         bAkelPadIsStarting = FALSE; // when XBrackets is not autoloaded, it _must_ be FALSE
 BOOL         bAkelPadIsFinishing = FALSE;
+BOOL         bIsMainWindowShown = FALSE;
 BOOL         bOpeningNewDocument = FALSE;
 BOOL         bDocumentJustOpened = FALSE;
 HWND         hDocumentJustOpenedWnd = NULL;
@@ -203,7 +205,10 @@ int IsBracketsHighlight(UINT uBrHglt)
   if (uBrHglt & BRHLF_ENABLED)
   {
     if ((uBrHglt & BRHLF_TEXT) || (uBrHglt & BRHLF_BKGND))
-      return 1;
+    {
+      if (bIsMainWindowShown && !bAkelPadIsStarting)
+        return 1;
+    }
   }
   return 0;
 }
@@ -324,6 +329,7 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
 
+  updatePluginGlobalState(pd);
   updatePluginData(pd);
 
   if ( pd->bOldWindows )
@@ -374,6 +380,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
 
+  updatePluginGlobalState(pd);
   updatePluginData(pd);
 
   #ifdef _mad_verification_
@@ -448,13 +455,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       if ((prevBracketsHighlight != uBracketsHighlight) ||
           (!prevInitialized) || bUpdateBracketsHighlight)
       {
-        MSGINFO msgi;
-        msgi.hWnd = pd->hWndEdit;
-        msgi.uMsg = WM_PAINT;
-        msgi.wParam = 0;
-        msgi.lParam = 0;
-
-        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+        OnEditGetActiveBrackets(pd->hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
       }
       else if (/*(prevBracketsHighlight != uBracketsHighlight) ||*/
                (prevColourHighlight[0] != bracketsColourHighlight[0]) ||
@@ -523,18 +524,13 @@ static BOOL DoMatchingBracketAction(const PLUGINDATA *pd, int action)
          (bBracketsHighlightVisibleArea && (CurrentBracketsIndexes[0] < 0)) )
     {
       BOOL    prevBracketsHighlightVisibleArea;
-      MSGINFO msgi;
 
       // saving previous value
       prevBracketsHighlightVisibleArea = bBracketsHighlightVisibleArea;
       bBracketsHighlightVisibleArea = FALSE;
 
       bGoToMatchingBracketTriggered = TRUE;
-      msgi.hWnd = pd->hWndEdit;
-      msgi.uMsg = WM_PAINT;
-      msgi.wParam = 0;
-      msgi.lParam = 0;
-      OnEditGetActiveBrackets(&msgi, 0);
+      OnEditGetActiveBrackets(pd->hWndEdit, WM_PAINT, 0);
 
       // restoring previous value
       bBracketsHighlightVisibleArea = prevBracketsHighlightVisibleArea;
@@ -707,6 +703,8 @@ void __declspec(dllexport) GoToMatchingBracket(PLUGINDATA *pd)
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
 
+  updatePluginGlobalState(pd);
+
   DoMatchingBracketAction(pd, XBRA_GOTO);
 
   pd->nUnload = UD_NONUNLOAD_NONACTIVE;
@@ -720,6 +718,8 @@ void __declspec(dllexport) SelToMatchingBracket(PLUGINDATA *pd)
   pd->dwSupport |= PDS_NOAUTOLOAD;
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
+
+  updatePluginGlobalState(pd);
 
   isDefaultAction = 1;
   if ( pd->lParam )
@@ -756,6 +756,8 @@ void __declspec(dllexport) GoToNearestBracket(PLUGINDATA *pd)
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
 
+  updatePluginGlobalState(pd);
+
   DoNearestBracketsAction(pd, XBRA_GOTO_NEABR);
 
   pd->nUnload = UD_NONUNLOAD_NONACTIVE;
@@ -769,6 +771,8 @@ void __declspec(dllexport) SelToNearestBrackets(PLUGINDATA *pd)
   if ( pd->dwSupport & PDS_GETSUPPORT )
     return;
 
+  updatePluginGlobalState(pd);
+
   DoNearestBracketsAction(pd, XBRA_SELTO_NEARBR);
 
   pd->nUnload = UD_NONUNLOAD_NONACTIVE;
@@ -776,7 +780,6 @@ void __declspec(dllexport) SelToNearestBrackets(PLUGINDATA *pd)
 
 LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  MSGINFO msgi;
   BOOL    bTextChangedLocal = FALSE;
 
   static BOOL bHLSetTheme = FALSE;
@@ -801,12 +804,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           {
             bHLSetTheme = TRUE;
 
-            msgi.hWnd = hWnd;
-            msgi.uMsg = WM_PAINT;
-            msgi.wParam = 0;
-            msgi.lParam = 0;
-
-            OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
+            OnEditGetActiveBrackets(hWnd, WM_PAINT, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
           }
         }
       }
@@ -847,12 +845,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           if (ei.hWndEdit == hWnd)
           {
-            msgi.hWnd = hWnd;
-            msgi.uMsg = WM_SETFOCUS;
-            msgi.wParam = 0;
-            msgi.lParam = 0;
-
-            OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+            OnEditGetActiveBrackets(hWnd, WM_SETFOCUS, XBR_GBF_HIGHLIGHTBR);
           }
         }
       }
@@ -896,6 +889,8 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
     if (uMsg == WM_CHAR)
     {
+      MSGINFO msgi;
+
       // local operations because only WM_CHAR is processed
       msgi.hWnd   = hWnd;
       msgi.uMsg   = uMsg;
@@ -924,12 +919,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           lResult = pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
         // after the text is changed: updating the highlighting
-        msgi.hWnd   = hWnd;
-        msgi.uMsg   = uMsg;
-        msgi.wParam = wParam;
-        msgi.lParam = lParam;
-
-        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+        OnEditGetActiveBrackets(hWnd, uMsg, XBR_GBF_HIGHLIGHTBR);
 
         return lResult;
       }
@@ -946,18 +936,13 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       {
         unsigned int uFlags;
 
-        msgi.hWnd   = hWnd;
-        msgi.uMsg   = WM_PAINT;
-        msgi.wParam = 0;
-        msgi.lParam = 0;
-
         uFlags = XBR_GBF_HIGHLIGHTBR;
         if (bHLSetTheme && (hWnd == g_hFocusedEditWnd))
         {
           bHLSetTheme = FALSE;
           uFlags |= XBR_GBF_UPDATEHLDATA;
         }
-        OnEditGetActiveBrackets(&msgi, uFlags);
+        OnEditGetActiveBrackets(hWnd, WM_PAINT, uFlags);
         bDocumentJustOpened = FALSE;
         hDocumentJustOpenedWnd = NULL;
       }
@@ -967,12 +952,7 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           bHLSetTheme = FALSE;
 
-          msgi.hWnd   = hWnd;
-          msgi.uMsg   = WM_PAINT;
-          msgi.wParam = 0;
-          msgi.lParam = 0;
-
-          OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
+          OnEditGetActiveBrackets(hWnd, WM_PAINT, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
         }
         else
           OnEditHighlightActiveBrackets();
@@ -1020,10 +1000,14 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     LRESULT lResult = 0;
 
     // before processing the message...
-    if ((uMsg == AKDN_MAIN_ONSTART_PRESHOW) ||
-        (uMsg == AKDN_MAIN_ONSTART_SHOW))
+    if (uMsg == AKDN_MAIN_ONSTART_PRESHOW)
     {
       bAkelPadIsStarting = TRUE;
+    }
+    else if (uMsg == AKDN_MAIN_ONSTART_SHOW)
+    {
+      bAkelPadIsStarting = TRUE;
+      bIsMainWindowShown = TRUE;
     }
 
     // processing the message...
@@ -1042,16 +1026,9 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         ei.hWndEdit = NULL;
         if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei) != 0)
         {
-          MSGINFO msgi;
-          msgi.hWnd = ei.hWndEdit;
-          msgi.uMsg = WM_PAINT;
-          msgi.wParam = 0;
-          msgi.lParam = 0;
-
-          OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+          OnEditGetActiveBrackets(ei.hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
         }
       }
-
     }
 
     return lResult;
@@ -1077,11 +1054,6 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       bOpeningNewDocument = FALSE;
       bDocumentJustOpened = TRUE;
       hDocumentJustOpenedWnd = ((FRAMEDATA *)wParam)->ei.hWndEdit;
-      /*if (IsBracketsHighlight(uBracketsHighlight))
-      {
-        MSGINFO msgi = { (HWND) wParam, WM_PAINT, 0, 0 };
-        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
-      }*/
 
       return lResult;
     }
@@ -1146,8 +1118,6 @@ LRESULT CALLBACK NewFrameProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  MSGINFO msgi;
-
   (hWnd); // unreferenced parameter
 
   if (uMsg == WM_NOTIFY)
@@ -1161,12 +1131,7 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
           {
-            msgi.hWnd = pnmhdr->hwndFrom;
-            msgi.uMsg = WM_PAINT;
-            msgi.wParam = 0;
-            msgi.lParam = 0;
-
-            OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+            OnEditGetActiveBrackets(pnmhdr->hwndFrom, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
           }
         }
         else if (g_bAkelEdit)
@@ -1189,12 +1154,7 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
               // after the text is changed: updating the highlighting
               if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
               {
-                msgi.hWnd = pnmhdr->hwndFrom;
-                msgi.uMsg = WM_PAINT;
-                msgi.wParam = 0;
-                msgi.lParam = 0;
-
-                OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+                OnEditGetActiveBrackets(pnmhdr->hwndFrom, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
               }
               break;
             }
@@ -1229,12 +1189,7 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hActualEditWnd = NULL;
         RemoveAllHighlightInfo(FALSE);
 
-        msgi.hWnd = lpFrame->ei.hWndEdit;
-        msgi.uMsg = WM_PAINT;
-        msgi.wParam = 0;
-        msgi.lParam = 0;
-
-        OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+        OnEditGetActiveBrackets(lpFrame->ei.hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
 
         // PMDI mode
         bOpeningNewDocument = FALSE;
@@ -1262,6 +1217,14 @@ void OnAenPaint(AENPAINT* p)
   }
 }
 #endif
+
+void updatePluginGlobalState(PLUGINDATA* pd)
+{
+  if (!pd->bOnStart)
+  {
+    bIsMainWindowShown = TRUE;
+  }
+}
 
 void updatePluginData(PLUGINDATA* pd)
 {
@@ -1317,13 +1280,7 @@ void Initialize(PLUGINDATA* pd)
 
     if (IsBracketsHighlight(uBracketsHighlight))
     {
-      MSGINFO msgi;
-      msgi.hWnd = pd->hWndEdit;
-      msgi.uMsg = WM_PAINT;
-      msgi.wParam = 0;
-      msgi.lParam = 0;
-
-      OnEditGetActiveBrackets(&msgi, XBR_GBF_HIGHLIGHTBR);
+      OnEditGetActiveBrackets(pd->hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
     }
 
     #ifdef _mad_verification_

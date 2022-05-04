@@ -152,7 +152,6 @@ int             nCurrentFileType2 = tfmNone;
 HWND            hCurrentEditWnd = NULL; // Can be NULL! Use hActualEditWnd.
 HWND            hActualEditWnd = NULL; //currentEdit;
 BOOL            bBracketsInternalRepaint = FALSE;
-extern BOOL     bAkelPadIsStarting;
 
 #if use_aen_paint
 UINT            nAenPaintWanted = 0x00;
@@ -865,7 +864,7 @@ static void updateActualState(HWND hEditWnd)
   }
 }
 
-void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
+void OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags)
 {
   int         i;
   BOOL        bHighlighted;
@@ -873,10 +872,10 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
   INT_X       nEditEndPos;
   CHARRANGE_X crSelection;
 
-  if (bBracketsInternalRepaint || bAkelPadIsStarting)
+  if (bBracketsInternalRepaint)
     return;
 
-  if (!pmsgi->hWnd)
+  if (!hEditWnd)
     return;
 
   /*
@@ -885,7 +884,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
   MessageBox(NULL, str, "OnEditGetActiveBrackets", MB_OK);
   */
 
-  updateActualState(pmsgi->hWnd);
+  updateActualState(hEditWnd);
 
   // getting current position and selection
   if (g_bOldWindows)
@@ -893,7 +892,7 @@ void OnEditGetActiveBrackets(MSGINFO* pmsgi, const unsigned int uFlags)
   else
     AnyRichEdit_ExGetSelPosW(hActualEditWnd, &nEditPos, &nEditEndPos);
 
-  if (pmsgi->uMsg == WM_LBUTTONUP)
+  if (uMsg == WM_LBUTTONUP)
   {
     if (nEditEndPos == nEditPos)
     {
@@ -968,7 +967,7 @@ void OnEditHighlightActiveBrackets(void)
   INT_X index;
   INT_X indexesToRemoveHighlight[HIGHLIGHT_INDEXES];
 
-  if (bBracketsInternalRepaint || bAkelPadIsStarting)
+  if (bBracketsInternalRepaint)
     return;
 
   uHighlightFlags = HF_UNINITIALIZED;
@@ -5080,7 +5079,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 {
   int i;
 
-  if (bBracketsInternalRepaint || bAkelPadIsStarting)
+  if (bBracketsInternalRepaint)
     return;
 
   for (i = 0; i < HIGHLIGHT_INDEXES; i++)
