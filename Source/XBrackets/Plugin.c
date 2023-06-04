@@ -1037,23 +1037,28 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   if (IsBracketsHighlight(uBracketsHighlight) || bGoToMatchingBracketTriggered)
   {
     if ((uMsg == AKDN_OPENDOCUMENT_START) ||
-        (uMsg == AKDN_EDIT_ONSTART) ||
-        (uMsg == WM_COMMAND && LOWORD(wParam) == IDM_FILE_NEW))
+        (uMsg == AKDN_EDIT_ONSTART))
     {
       // AKDN_EDIT_ONSTART - required to set bOpeningNewDocument before EN_SELCHANGE
-      // WM_COMMAND, IDM_FILE_NEW - required for Sessions plugin
       bOpeningNewDocument = TRUE;
     }
-    else if (uMsg == AKDN_OPENDOCUMENT_FINISH)
+    else if ((uMsg == AKDN_OPENDOCUMENT_FINISH) ||
+             (uMsg == WM_COMMAND && LOWORD(wParam) == IDM_FILE_NEW))
     {
       LRESULT lResult = 0;
+
+      if (uMsg == WM_COMMAND)
+        bOpeningNewDocument = TRUE;
 
       if (pMainProcData && pMainProcData->NextProc)
         lResult = pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
       bOpeningNewDocument = FALSE;
-      bDocumentJustOpened = TRUE;
-      hDocumentJustOpenedWnd = ((FRAMEDATA *)wParam)->ei.hWndEdit;
+      if (uMsg != WM_COMMAND)
+      {
+        bDocumentJustOpened = TRUE;
+        hDocumentJustOpenedWnd = ((FRAMEDATA *)wParam)->ei.hWndEdit;
+      }
 
       return lResult;
     }
