@@ -3623,7 +3623,11 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
       state.nLeftBrPos = nStartPos; // exclude the bracket itself
       state.nLeftBrType = nBrType;
       state.nLeftDupDirection = nDupDir;
-      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
+      if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie) )
+      {
+        if ( brCookie.nBracketType != nBrType )
+          brCookie.nResult = ghlrNone;
+      }
       NearestBr_FindRightBracket(nStartPos, flags, &state, &brCookie);
     }
     else if ( nAtBr & abcRightBr )
@@ -3634,7 +3638,11 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
       state.nRightBrPos = nStartPos;
       state.nRightBrType = nBrType;
       state.nRightDupDirection = nDupDir;
-      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie);
+      if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBr, &brCookie) )
+      {
+        if ( brCookie.nBracketType != nBrType )
+          brCookie.nResult = ghlrNone;
+      }
       NearestBr_FindLeftBracket(nStartPos, flags, &state, &brCookie);
       NearestBr_AdjustLeftBracketPos(&state);
     }
@@ -3653,7 +3661,11 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
       state.nLeftBrPos = nStartPos; // exclude the bracket itself
       state.nLeftBrType = nBrType;
       state.nLeftDupDirection = nDupDir;
-      NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie);
+      if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie) )
+      {
+        if ( brCookie.nBracketType != nBrType )
+          brCookie.nResult = ghlrNone;
+      }
       NearestBr_FindRightBracket(nStartPos, flags, &state, &brCookie);
       if ( brCookie.nResult == ghlrNone && state.nRightBrType != state.nLeftBrType )
       {
@@ -3671,7 +3683,11 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
         state.nRightBrPos = nStartPos;
         state.nRightBrType = nBrType;
         state.nRightDupDirection = nDupDir;
-        NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie);
+        if ( NearestBr_GetFoldOrQuoteFromAkelEdit(nStartPos, nAtBrNow, &brCookie) )
+        {
+          if ( brCookie.nBracketType != nBrType )
+            brCookie.nResult = ghlrNone;
+        }
         NearestBr_FindLeftBracket(nStartPos, flags, &state, &brCookie);
         NearestBr_AdjustLeftBracketPos(&state);
       }

@@ -238,6 +238,12 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.8.0 (January 2024)
+ * Glory to Ukraine! Glory to the heroes!
+ - fixed: GetNearestBracketsRange did not check the result of
+   NearestBr_GetFoldOrQuoteFromAkelEdit (it can return a different
+   pair of brackets)
+
 v.7.9 (June 2023)
  * Glory to Ukraine! Glory to the heroes!
  - fixed: when text was pasted into a just created document (right after
@@ -519,7 +525,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Jun 2023, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Jan 2024, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);
