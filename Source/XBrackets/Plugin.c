@@ -66,6 +66,7 @@ BOOL         bBracketsHighlightVisibleArea = FALSE;
 BOOL         bBracketsRightExistsOK = FALSE;
 BOOL         bBracketsDoDoubleQuote = FALSE;
 BOOL         bBracketsDoSingleQuote = FALSE;
+BOOL         bBracketsDoSingleQuoteIf = FALSE;
 BOOL         bBracketsDoTag = FALSE;
 BOOL         bBracketsDoTag2 = FALSE;
 BOOL         bBracketsDoTagIf = FALSE;
@@ -92,6 +93,9 @@ COLORREF     g_CustomColoursHighlight_0[MAX_CUSTOM_COLOURS] = { 0 };
 char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
 wchar_t      strHtmlFileExtsW[STR_FILEEXTS_SIZE] = L"htm; xml; php\0";
 wchar_t      strHtmlFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
+char         strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE] = "js; pas; py; ps1; sh\0";
+wchar_t      strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE] = L"js; pas; py; ps1; sh\0";
+wchar_t      strSingleQuoteFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
 char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
 wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 wchar_t      strEscaped1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
@@ -114,6 +118,7 @@ wchar_t      strPluginFuncMainW[STR_PLUGINFUNC_SIZE] = { 0 };
 #define      OPTF_SKIPESCAPED1        0x001000
 #define      OPTF_SKIPCOMMENT1        0x002000
 #define      OPTF_DONOTDOUBLEQUOTE    0x010000
+#define      OPTF_DOSINGLEQUOTEIF     0x020000
 #define      OPTF_HLDOUBLEQUOTE       0x100000
 #define      OPTF_HLSINGLEQUOTE       0x200000
 #define      OPTF_HLTAG               0x400000
@@ -167,6 +172,7 @@ static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   "HighlightBkRGB",
   "CustomRGB",
   "HtmlFileExts",
+  "SingleQuoteFileExts",
   "Escaped1FileExts",
   "Comment1FileExts",
   "XBrackets"
@@ -195,6 +201,7 @@ static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   L"HighlightBkRGB",
   L"CustomRGB",
   L"HtmlFileExts",
+  L"SingleQuoteFileExts",
   L"Escaped1FileExts",
   L"Comment1FileExts",
   L"XBrackets"
@@ -368,6 +375,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   BOOL     prevBracketsDoTagIf;
   BOOL     prevBracketsDoDoubleQuote;
   BOOL     prevBracketsDoSingleQuote;
+  BOOL     prevBracketsDoSingleQuoteIf;
   BOOL     prevBracketsHighlightTag;
   BOOL     prevBracketsHighlightDoubleQuote;
   BOOL     prevBracketsHighlightSingleQuote;
@@ -402,6 +410,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   prevBracketsDoTagIf = bBracketsDoTagIf;
   prevBracketsDoDoubleQuote = bBracketsDoDoubleQuote;
   prevBracketsDoSingleQuote = bBracketsDoSingleQuote;
+  prevBracketsDoSingleQuoteIf = bBracketsDoSingleQuoteIf;
   prevBracketsHighlightTag = bBracketsHighlightTag;
   prevBracketsHighlightDoubleQuote = bBracketsHighlightDoubleQuote;
   prevBracketsHighlightSingleQuote = bBracketsHighlightSingleQuote;
@@ -429,6 +438,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
       (prevBracketsDoTagIf != bBracketsDoTagIf) ||
       (prevBracketsDoDoubleQuote != bBracketsDoDoubleQuote) ||
       (prevBracketsDoSingleQuote != bBracketsDoSingleQuote) ||
+      (prevBracketsDoSingleQuoteIf != bBracketsDoSingleQuoteIf) ||
       (prevBracketsHighlightTag != bBracketsHighlightTag) ||
       (prevBracketsHighlightDoubleQuote != bBracketsHighlightDoubleQuote) ||
       (prevBracketsHighlightSingleQuote != bBracketsHighlightSingleQuote) ||
@@ -1463,6 +1473,7 @@ void ReadOptions(void)
   int   i;
 
   strHtmlFileExtsW_0[0] = 0;
+  strSingleQuoteFileExtsW_0[0] = 0;
   strEscaped1FileExtsW_0[0] = 0;
   strComment1FileExtsW_0[0] = 0;
   opt_szNextCharOkW_0[0] = 0;
@@ -1513,6 +1524,11 @@ void ReadOptions(void)
         strHtmlFileExtsA, STR_FILEEXTS_SIZE - 1);
       CharLowerA(strHtmlFileExtsA);
       lstrcpyA( (LPSTR) strHtmlFileExtsW_0, strHtmlFileExtsA );
+
+      readOptionStrA(hOptions, cszOptNamesA[OPT_SINGLEQUOTEFILEEXTS],
+        strSingleQuoteFileExtsA, STR_FILEEXTS_SIZE - 1);
+      CharLowerA(strSingleQuoteFileExtsA);
+      lstrcpyA( (LPSTR) strSingleQuoteFileExtsW_0, strSingleQuoteFileExtsA );
 
       readOptionStrA(hOptions, cszOptNamesA[OPT_ESCAPED1FILEEXTS],
         strEscaped1FileExtsA, STR_FILEEXTS_SIZE - 1);
@@ -1583,6 +1599,11 @@ void ReadOptions(void)
       CharLowerW(strHtmlFileExtsW);
       lstrcpyW(strHtmlFileExtsW_0, strHtmlFileExtsW);
 
+      readOptionStrW(hOptions, cszOptNamesW[OPT_SINGLEQUOTEFILEEXTS],
+        strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1);
+      CharLowerW(strSingleQuoteFileExtsW);
+      lstrcpyW(strSingleQuoteFileExtsW_0, strSingleQuoteFileExtsW);
+
       readOptionStrW(hOptions, cszOptNamesW[OPT_ESCAPED1FILEEXTS],
         strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1);
       CharLowerW(strEscaped1FileExtsW);
@@ -1636,6 +1657,8 @@ void ReadOptions(void)
       ((opt_dwOptionsFlags0 & OPTF_DONOTDOUBLEQUOTE) != OPTF_DONOTDOUBLEQUOTE);
     bBracketsDoSingleQuote =
       ((opt_dwOptionsFlags0 & OPTF_DOSINGLEQUOTE) == OPTF_DOSINGLEQUOTE);
+    bBracketsDoSingleQuoteIf =
+      ((opt_dwOptionsFlags0 & OPTF_DOSINGLEQUOTEIF) == OPTF_DOSINGLEQUOTEIF);
     bBracketsDoTag =
       ((opt_dwOptionsFlags0 & OPTF_DOTAG) == OPTF_DOTAG);
     bBracketsDoTag2 =
@@ -1743,13 +1766,14 @@ void ReadOptions(void)
 
 enum eUpdatedOptionFlags
 {
-  fCustomColours   = 0x01,
-  fStrHtmlExts     = 0x02,
-  fStrEscaped1Exts = 0x04,
-  fStrComment1Exts = 0x08,
-  fStrNextCharOk   = 0x10,
-  fStrPrevCharOk   = 0x20,
-  fStrUsrBrPairs   = 0x40
+  fCustomColours      = 0x01,
+  fStrHtmlExts        = 0x02,
+  fStrSingleQuoteExts = 0x04,
+  fStrEscaped1Exts    = 0x08,
+  fStrComment1Exts    = 0x10,
+  fStrNextCharOk      = 0x20,
+  fStrPrevCharOk      = 0x40,
+  fStrUsrBrPairs      = 0x80
 };
 
 void SaveOptions(void)
@@ -1779,6 +1803,8 @@ void SaveOptions(void)
     dwNewOptionsFlags |= OPTF_DONOTDOUBLEQUOTE;
   if (bBracketsDoSingleQuote)
     dwNewOptionsFlags |= OPTF_DOSINGLEQUOTE;
+  if (bBracketsDoSingleQuoteIf)
+    dwNewOptionsFlags |= OPTF_DOSINGLEQUOTEIF;
   if (bBracketsDoTag)
     dwNewOptionsFlags |= OPTF_DOTAG;
   if (bBracketsDoTag2)
@@ -1801,6 +1827,8 @@ void SaveOptions(void)
   {
     if ( lstrcmpiA((LPCSTR) strHtmlFileExtsW_0, strHtmlFileExtsA) != 0 )
       nUpdatedOptions |= fStrHtmlExts;
+    if ( lstrcmpiA((LPCSTR) strSingleQuoteFileExtsW_0, strSingleQuoteFileExtsA) != 0 )
+      nUpdatedOptions |= fStrSingleQuoteExts;
     if ( lstrcmpiA((LPCSTR) strEscaped1FileExtsW_0, strEscaped1FileExtsA) != 0 )
       nUpdatedOptions |= fStrEscaped1Exts;
     if ( lstrcmpiA((LPCSTR) strComment1FileExtsW_0, strComment1FileExtsA) != 0 )
@@ -1816,6 +1844,8 @@ void SaveOptions(void)
   {
     if ( lstrcmpiW(strHtmlFileExtsW_0, strHtmlFileExtsW) != 0 )
       nUpdatedOptions |= fStrHtmlExts;
+    if ( lstrcmpiW(strSingleQuoteFileExtsW_0, strSingleQuoteFileExtsW) != 0 )
+      nUpdatedOptions |= fStrSingleQuoteExts;
     if ( lstrcmpiW(strEscaped1FileExtsW_0, strEscaped1FileExtsW) != 0 )
       nUpdatedOptions |= fStrEscaped1Exts;
     if ( lstrcmpiW(strComment1FileExtsW_0, strComment1FileExtsW) != 0 )
@@ -1897,6 +1927,15 @@ void SaveOptions(void)
           poA.dwType = PO_STRING;
           SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
           lstrcpyA( (LPSTR) strHtmlFileExtsW_0, strHtmlFileExtsA );
+        }
+        if (nUpdatedOptions & fStrSingleQuoteExts)
+        {
+          poA.pOptionName = cszOptNamesA[OPT_SINGLEQUOTEFILEEXTS];
+          poA.lpData = (BYTE*) strSingleQuoteFileExtsA;
+          poA.dwData = (lstrlenA(strSingleQuoteFileExtsA) + 1)*sizeof(char);
+          poA.dwType = PO_STRING;
+          SendMessageA(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poA);
+          lstrcpyA( (LPSTR) strSingleQuoteFileExtsW_0, strSingleQuoteFileExtsA );
         }
         if (nUpdatedOptions & fStrEscaped1Exts)
         {
@@ -2007,6 +2046,15 @@ void SaveOptions(void)
           poW.dwType = PO_STRING;
           SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
           lstrcpyW(strHtmlFileExtsW_0, strHtmlFileExtsW);
+        }
+        if (nUpdatedOptions & fStrSingleQuoteExts)
+        {
+          poW.pOptionName = cszOptNamesW[OPT_SINGLEQUOTEFILEEXTS];
+          poW.lpData = (BYTE*) strSingleQuoteFileExtsW;
+          poW.dwData = (lstrlenW(strSingleQuoteFileExtsW) + 1)*sizeof(wchar_t);
+          poW.dwType = PO_STRING;
+          SendMessageW(g_hMainWnd, AKD_OPTION, (WPARAM) hOptions, (LPARAM) &poW);
+          lstrcpyW(strSingleQuoteFileExtsW_0, strSingleQuoteFileExtsW);
         }
         if (nUpdatedOptions & fStrEscaped1Exts)
         {

@@ -50,7 +50,8 @@ enum TFileType2 {
   tfmNone           = 0x00,
   tfmComment1       = 0x01,
   tfmHtmlCompatible = 0x02,
-  tfmEscaped1       = 0x04
+  tfmEscaped1       = 0x04,
+  tfmSingleQuote    = 0x08
 };
 
 enum TBracketType {
@@ -172,6 +173,7 @@ extern BOOL     bBracketsHighlightVisibleArea;
 extern BOOL     bBracketsRightExistsOK;
 extern BOOL     bBracketsDoDoubleQuote;
 extern BOOL     bBracketsDoSingleQuote;
+extern BOOL     bBracketsDoSingleQuoteIf;
 extern BOOL     bBracketsDoTag;
 extern BOOL     bBracketsDoTag2;
 extern BOOL     bBracketsDoTagIf;
@@ -183,6 +185,8 @@ extern BOOL     bBracketsSkipComment1;
 extern COLORREF bracketsColourHighlight[2];
 extern char     strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strHtmlFileExtsW[STR_FILEEXTS_SIZE];
+extern char     strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
+extern wchar_t  strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE];
 extern char     strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
 extern char     strComment1FileExtsA[STR_FILEEXTS_SIZE];
@@ -667,9 +671,14 @@ static int getRightBracketType(const wchar_t wch, const unsigned int uFlags)
 static int getLeftBracketTypeEx(const wchar_t wch, const unsigned int uFlags)
 {
   int nLeftBracketType = getLeftBracketType(wch, uFlags);
-  if (nLeftBracketType == tbtTag || nLeftBracketType == tbtTag2 || nLeftBracketType == tbtTagInv)
+  if (nLeftBracketType == tbtSglQuote)
   {
-    if (!(nCurrentFileType2 & tfmHtmlCompatible))
+    if (bBracketsDoSingleQuoteIf && !(nCurrentFileType2 & tfmSingleQuote))
+      nLeftBracketType = tbtNone;
+  }
+  else if (nLeftBracketType == tbtTag || nLeftBracketType == tbtTag2 || nLeftBracketType == tbtTagInv)
+  {
+    if (bBracketsDoTagIf && !(nCurrentFileType2 & tfmHtmlCompatible))
       nLeftBracketType = tbtNone;
   }
   return nLeftBracketType;
@@ -678,9 +687,14 @@ static int getLeftBracketTypeEx(const wchar_t wch, const unsigned int uFlags)
 static int getRightBracketTypeEx(const wchar_t wch, const unsigned int uFlags)
 {
   int nRightBracketType = getRightBracketType(wch, uFlags);
-  if (nRightBracketType == tbtTag || nRightBracketType == tbtTag2 || nRightBracketType == tbtTagInv)
+  if (nRightBracketType == tbtSglQuote)
   {
-    if (!(nCurrentFileType2 & tfmHtmlCompatible))
+    if (bBracketsDoSingleQuoteIf && !(nCurrentFileType2 & tfmSingleQuote))
+      nRightBracketType = tbtNone;
+  }
+  else if (nRightBracketType == tbtTag || nRightBracketType == tbtTag2 || nRightBracketType == tbtTagInv)
+  {
+    if (bBracketsDoTagIf && !(nCurrentFileType2 & tfmHtmlCompatible))
       nRightBracketType = tbtNone;
   }
   return nRightBracketType;
@@ -1130,7 +1144,12 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
 
   updateActualState(pmsgi->hWnd);
 
-  if (nBracketType == tbtTag)
+  if (nBracketType == tbtSglQuote)
+  {
+    if (bBracketsDoSingleQuoteIf && !(nCurrentFileType2 & tfmSingleQuote))
+      return FALSE;
+  }
+  else if (nBracketType == tbtTag)
   {
     if (bBracketsDoTagIf && !(nCurrentFileType2 & tfmHtmlCompatible))
       return FALSE;
@@ -3933,7 +3952,12 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
     }
   }
 
-  if (nBracketType == tbtTag)
+  if (nBracketType == tbtSglQuote)
+  {
+    if (bBracketsDoSingleQuoteIf && !(nCurrentFileType2 & tfmSingleQuote))
+      return FALSE;
+  }
+  else if (nBracketType == tbtTag)
   {
     if (bBracketsDoTagIf && !(nCurrentFileType2 & tfmHtmlCompatible))
       return FALSE;
@@ -5394,6 +5418,11 @@ static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
   return wstr_is_listed_ext(szExtW, strEscaped1FileExtsW, strEscaped1FileExtsA);
 }
 
+static BOOL wstr_is_singlequote_ext(const wchar_t* szExtW)
+{
+  return wstr_is_listed_ext(szExtW, strSingleQuoteFileExtsW, strSingleQuoteFileExtsA);
+}
+
 static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
 {
   if ( szExtW && szExtW[0] )
@@ -5535,6 +5564,10 @@ int getFileType(int* pnCurrentFileType2)
       }
     }
 
+    if ( wstr_is_singlequote_ext(szExtW) )
+    {
+      nType2 |= tfmSingleQuote;
+    }
   }
   else
   {

@@ -20,6 +20,7 @@ extern BOOL        bBracketsHighlightVisibleArea;
 extern BOOL        bBracketsRightExistsOK;
 extern BOOL        bBracketsDoDoubleQuote;
 extern BOOL        bBracketsDoSingleQuote;
+extern BOOL        bBracketsDoSingleQuoteIf;
 extern BOOL        bBracketsDoTag;
 extern BOOL        bBracketsDoTag2;
 extern BOOL        bBracketsDoTagIf;
@@ -32,6 +33,8 @@ extern COLORREF    bracketsColourHighlight[2];
 extern COLORREF    g_CustomColoursHighlight[MAX_CUSTOM_COLOURS];
 extern char        strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strHtmlFileExtsW[STR_FILEEXTS_SIZE];
+extern char        strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
+extern wchar_t     strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE];
 extern char        strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
 extern char        strComment1FileExtsA[STR_FILEEXTS_SIZE];
@@ -53,6 +56,7 @@ static void SettingsDlg_OnChBracketsAutoCompleteClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsHighlightClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoDoubleQuoteClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoSingleQuoteClicked(HWND hDlg);
+static void SettingsDlg_OnChBracketsDoSingleQuoteIfClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoTagClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsDoTagIfClicked(HWND hDlg);
 static void SettingsDlg_OnChBracketsSkipEscaped1(HWND hDlg);
@@ -115,6 +119,14 @@ INT_PTR CALLBACK SettingsDlgProc(
         if (HIWORD(wParam) == BN_CLICKED)
         {
           SettingsDlg_OnChBracketsDoSingleQuoteClicked(hDlg);
+        }
+        break;
+      }
+      case IDC_CH_BRACKETS_DOSINGLEQUOTEIF:
+      {
+        if (HIWORD(wParam) == BN_CLICKED)
+        {
+          SettingsDlg_OnChBracketsDoSingleQuoteIfClicked(hDlg);
         }
         break;
       }
@@ -222,6 +234,9 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
 {
   UINT uState;
 
+  settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF),
+    strSingleQuoteFileExtsA, strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
+
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
     strHtmlFileExtsA, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
@@ -257,6 +272,8 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
   bBracketsDoTag = (uState == BST_CHECKED);
   bBracketsHighlightTag = (uState == BST_INDETERMINATE);
 
+  bBracketsDoSingleQuoteIf = 
+    CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF);
   bBracketsDoTag2 = 
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOTAG2);
   bBracketsDoTagIf = 
@@ -367,7 +384,20 @@ void SettingsDlg_OnChBracketsDoDoubleQuoteClicked(HWND hDlg)
 
 void SettingsDlg_OnChBracketsDoSingleQuoteClicked(HWND hDlg)
 {
+  BOOL bEnable = CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTE);
+  DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF, bEnable);
+  if (bEnable)
+  {
+    bEnable = CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF);
+  }
+  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF, bEnable);
   xbrSetAutocompleteWindowText(hDlg, g_LangSystem);
+}
+
+void SettingsDlg_OnChBracketsDoSingleQuoteIfClicked(HWND hDlg)
+{
+  BOOL bEnable = CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF);
+  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF, bEnable);
 }
 
 void SettingsDlg_OnChBracketsDoTagClicked(HWND hDlg)
@@ -555,6 +585,8 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
     IDC_CH_BRACKETS_DOTAG, uState);
 
   CheckBox_SetCheck(hDlg, 
+    IDC_CH_BRACKETS_DOSINGLEQUOTEIF, bBracketsDoSingleQuoteIf);
+  CheckBox_SetCheck(hDlg, 
     IDC_CH_BRACKETS_DOTAG2, bBracketsDoTag2);
   CheckBox_SetCheck(hDlg, 
     IDC_CH_BRACKETS_DOTAGIF, bBracketsDoTagIf);
@@ -580,6 +612,10 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
   DlgItem_EnableWindow(hDlg, 
     IDC_ST_BRACKETS_SKIPCOMMENT1, bBracketsSkipComment1);
 
+  DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF, bBracketsDoSingleQuote || bBracketsHighlightSingleQuote);
+  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF, 
+    (bBracketsDoSingleQuote || bBracketsHighlightSingleQuote) ? bBracketsDoSingleQuoteIf : FALSE);
+
   DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOTAG2, bBracketsDoTag || bBracketsHighlightTag);
   DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOTAGIF, bBracketsDoTag || bBracketsHighlightTag);
   DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOTAGIF, 
@@ -588,6 +624,9 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
   xbrSetSettingsDlgLang(hDlg, g_LangSystem);
 
   showPluginStatus(hDlg);
+
+  settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF),
+    strSingleQuoteFileExtsA, strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
     strHtmlFileExtsA, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
