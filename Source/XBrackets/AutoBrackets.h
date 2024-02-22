@@ -41,6 +41,9 @@
 #define DEFAULT_NEARESTBR_SELTO_FLAGS  XBR_NBR_SELTO_WIDEN
 #define DEFAULT_NEARESTBR_MAX_LINES    0
 
+#define DEFAULT_GOTOBR_LINES_VIS_UP    1
+#define DEFAULT_GOTOBR_LINES_VIS_DOWN  0
+
 
 enum eXBracketsAction {
   XBRA_GOTO = 1,
@@ -90,6 +93,8 @@ const char*    getCurrentBracketsPairA(void);
 const wchar_t* getCurrentBracketsPairW(void);
 
 BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel); // CHARRANGE_X* crSel
+
+void AdjustCaretPosition(HWND hWndEdit, int nLinesVisibleUp, int nLinesVisibleDown);
 
 //---------------------------------------------------------------------------
 #endif

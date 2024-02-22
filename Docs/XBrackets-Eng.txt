@@ -218,6 +218,16 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
     The value of 1 means "within current line".
     The value of 0 means "unrestricted" - i.e. to the end of file.
 
+  gotobr.lines_vis_up = 1
+    Number of lines that must be visible above the active bracket right after
+    "GoToMatchingBracket", "SelToMatchingBracket", "GoToNearestBracket" or
+    "SelToNearestBrackets" has been called.
+
+  gotobr.lines_vis_down = 0
+    Number of lines that must be visible below the active bracket right after
+    "GoToMatchingBracket", "SelToMatchingBracket", "GoToNearestBracket" or
+    "SelToNearestBrackets" has been called.
+
 The plugin allows you to change the additional options without closing AkelPad.
 In three steps, in this order:
   1a. Open the "Plugins" window (Settings-> Plugins...) and disable the
@@ -238,6 +248,10 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.8.1
+ * Glory to Ukraine! Glory to the heroes!
+ + added: 'gotobr.lines_vis_up' and 'gotobr.lines_vis_down'
+
 v.8.0 (January 2024)
  * Glory to Ukraine! Glory to the heroes!
  + added: the option "Treat '' as brackets" has been enhanced

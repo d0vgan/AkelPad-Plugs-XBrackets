@@ -163,6 +163,8 @@ static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   "nearestbr.goto_flags",
   "nearestbr.selto_flags",
   "nearestbr.max_lines",
+  "gotobr.lines_vis_up",
+  "gotobr.lines_vis_down",
   // other options
   "common.user_brpairs",
   "autobrackets.next_char_ok",
@@ -192,6 +194,8 @@ static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   L"nearestbr.goto_flags",
   L"nearestbr.selto_flags",
   L"nearestbr.max_lines",
+  L"gotobr.lines_vis_up",
+  L"gotobr.lines_vis_down",
   // other options
   L"common.user_brpairs",
   L"autobrackets.next_char_ok",
@@ -515,6 +519,7 @@ static BOOL InvertCaretPositionInTheSelection(const HWND hEditWnd, const CHARRAN
     return FALSE;
 
   SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+  AdjustCaretPosition(hEditWnd, (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP], (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN]);
   return TRUE;
 }
 
@@ -603,6 +608,7 @@ static BOOL DoMatchingBracketAction(const PLUGINDATA *pd, int action)
               cr.cpMax = pos;
           }
           SendMessage(pd->hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &cr);
+          AdjustCaretPosition(pd->hWndEdit, (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP], (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN]);
           return TRUE;
         }
       }
@@ -1755,6 +1761,10 @@ void ReadOptions(void)
     g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] = DEFAULT_NEARESTBR_SELTO_FLAGS;
   if (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] == OPT_UNDEFINED_DWORD)
     g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] = DEFAULT_NEARESTBR_MAX_LINES;
+  if (g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP] = DEFAULT_GOTOBR_LINES_VIS_UP;
+  if (g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN] = DEFAULT_GOTOBR_LINES_VIS_DOWN;
 
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] > g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES])
   {

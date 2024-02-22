@@ -878,6 +878,12 @@ static void updateActualState(HWND hEditWnd)
   }
 }
 
+static void setSelAndAdjustCaretPos(HWND hEditWnd, const CHARRANGE_X* pcrSel)
+{
+  SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) pcrSel);
+  AdjustCaretPosition(hEditWnd, (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP], (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN]);
+}
+
 void OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags)
 {
   int         i;
@@ -3764,7 +3770,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
   curr_cr.cpMax = nCharacterPosition;
   if ( GetNearestBracketsRange(action, 0, nCharacterPosition, &curr_cr, &out_cr) )
   {
-    SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) &out_cr);
+    setSelAndAdjustCaretPos(hEditWnd, &out_cr);
   }
 }
 
@@ -4065,7 +4071,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
     }
     else
     {
-      const int maxBrLines = g_dwOptions[OPT_DWORD_HIGHLIGHT_BR_MAX_LINES];
+      const int maxBrLines = (int) g_dwOptions[OPT_DWORD_HIGHLIGHT_BR_MAX_LINES];
       if (maxBrLines > 0)
       {
         if (nMaxLine[0] > nLine + maxBrLines - 1)
@@ -6011,7 +6017,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       //  [|(...)|]  -->  |[(...)]|
       crNewSel.cpMin = crOldSel.cpMin - 1;
       crNewSel.cpMax = crOldSel.cpMax + 1;
-      SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+      setSelAndAdjustCaretPos(hWndEdit, &crNewSel);
       return TRUE;
     }
 
@@ -6149,7 +6155,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       if ( (crNewSel.cpMin < crOldSel.cpMin && crNewSel.cpMax >= crOldSel.cpMax) ||
            (crNewSel.cpMin <= crOldSel.cpMin && crNewSel.cpMax > crOldSel.cpMax) )
       {
-        SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
+        setSelAndAdjustCaretPos(hWndEdit, &crNewSel);
         return TRUE;
       }
 
@@ -6163,7 +6169,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
           if ( (nJoined == nbrjLeftNearby && nInnerRightBrType != tbtNone) ||
                (nJoined == nbrjRightNearby && nInnerLeftBrType != tbtNone) )
           {
-            SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
+            setSelAndAdjustCaretPos(hWndEdit, &crJoinSel);
             return TRUE;
           }
         }
@@ -6182,7 +6188,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
         if ( (crNewSelOuter.cpMin < crOldSel.cpMin && crNewSelOuter.cpMax >= crOldSel.cpMax) ||
              (crNewSelOuter.cpMin <= crOldSel.cpMin && crNewSelOuter.cpMax > crOldSel.cpMax) )
         {
-          SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crNewSelOuter);
+          setSelAndAdjustCaretPos(hWndEdit, &crNewSelOuter);
           return TRUE;
         }
 
@@ -6197,7 +6203,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
             if ( (nJoined == nbrjLeftNearby && nInnerRightBrType != tbtNone) ||
                  (nJoined == nbrjRightNearby && nInnerLeftBrType != tbtNone) )
             {
-              SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &crJoinSel);
+              setSelAndAdjustCaretPos(hWndEdit, &crJoinSel);
               return TRUE;
             }
           }
@@ -6216,4 +6222,42 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
   }
 
   return FALSE;
+}
+
+void AdjustCaretPosition(HWND hWndEdit, int nLinesVisibleUp, int nLinesVisibleDown)
+{
+  INT_X nFirstVisibleLine;
+  INT_X nLastVisibleLine;
+  INT_X nFirstSelLine;
+  INT_X nLastSelLine;
+  INT_X nDeltaFirst;
+  INT_X nDeltaLast;
+  INT_X nCaretLine;
+  int   nScrollLines = 0;
+
+  nFirstVisibleLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTFULLVISIBLELINE, 0);
+  nLastVisibleLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTFULLVISIBLELINE, 0);
+  nFirstSelLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTSELLINE, 0);
+  nLastSelLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTSELLINE, 0);
+  nDeltaFirst = nFirstSelLine - nFirstVisibleLine;
+  nDeltaLast = nLastVisibleLine - nLastSelLine;
+
+  if (nFirstSelLine == nLastSelLine)
+  {
+    if (nDeltaFirst < nLinesVisibleUp && nDeltaLast > nLinesVisibleUp + nLinesVisibleDown)
+      nScrollLines = -nLinesVisibleUp;
+    else if (nDeltaLast < nLinesVisibleDown && nDeltaFirst > nLinesVisibleUp + nLinesVisibleDown)
+      nScrollLines = nLinesVisibleDown;
+  }
+  else
+  {
+    nCaretLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
+    if (nCaretLine == nFirstSelLine && nDeltaFirst < nLinesVisibleUp)
+      nScrollLines = -nLinesVisibleUp;
+    else if (nCaretLine == nLastSelLine && nDeltaLast < nLinesVisibleDown)
+      nScrollLines = nLinesVisibleDown;
+  }
+
+  if (nScrollLines != 0)
+    SendMessage(hWndEdit, AEM_LINESCROLL, AESB_VERT, nScrollLines);
 }
