@@ -1057,6 +1057,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       // AKDN_EDIT_ONSTART - required to set bOpeningNewDocument before EN_SELCHANGE
       bOpeningNewDocument = TRUE;
+      RemoveAllHighlightInfo(FALSE);
     }
     else if ((uMsg == AKDN_OPENDOCUMENT_FINISH) ||
              (uMsg == WM_COMMAND && LOWORD(wParam) == IDM_FILE_NEW))
@@ -1064,7 +1065,10 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       LRESULT lResult = 0;
 
       if (uMsg == WM_COMMAND)
+      {
         bOpeningNewDocument = TRUE;
+        RemoveAllHighlightInfo(FALSE);
+      }
 
       if (pMainProcData && pMainProcData->NextProc)
         lResult = pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
