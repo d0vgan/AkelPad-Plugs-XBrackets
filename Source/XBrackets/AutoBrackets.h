@@ -94,8 +94,8 @@ const wchar_t* getCurrentBracketsPairW(void);
 
 BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel); // CHARRANGE_X* crSel
 
+void SetSelAndAdjustCaretPos(HWND hEditWnd, const void* crSel); // CHARRANGE_X* crSel
 void AdjustCaretPosition(HWND hWndEdit, int nLinesVisibleUp, int nLinesVisibleDown);
 
 //---------------------------------------------------------------------------
 #endif
-

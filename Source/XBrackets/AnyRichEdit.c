@@ -359,4 +359,3 @@ DWORD AnyRichEdit_SetEventMask(HWND hEd, DWORD nEventMask)
   }
 
 #endif
-

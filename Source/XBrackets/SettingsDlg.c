@@ -69,16 +69,16 @@ static HWND SettingsDlg_InitToolTip(HWND hDlg);
 static void SettingsDlg_UpdateStateOfChBrackets(HWND hDlg, BOOL bInvert);
 
 INT_PTR CALLBACK SettingsDlgProc(
-  HWND   hDlg, 
-  UINT   uMessage, 
-  WPARAM wParam, 
+  HWND   hDlg,
+  UINT   uMessage,
+  WPARAM wParam,
   LPARAM lParam)
 {
   static COLORREF bracketsColourHighlight_0[2] = { 0, 0 };
 
   if (uMessage == WM_COMMAND)
   {
-    switch (LOWORD(wParam)) 
+    switch (LOWORD(wParam))
     {
       case IDC_CH_BRACKETS_HIGHLIGHT:
       {
@@ -206,7 +206,7 @@ INT_PTR CALLBACK SettingsDlgProc(
 
   else if (uMessage == WM_NOTIFY)
   {
-    
+
   }
 
   else if (uMessage == WM_INITDIALOG)
@@ -246,7 +246,7 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
     strComment1FileExtsA, strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
-  bBracketsAutoComplete = 
+  bBracketsAutoComplete =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_AUTOCOMPLETE);
   uBracketsHighlight = 0x00;
   if (CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_HIGHLIGHT))
@@ -257,7 +257,7 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
     uBracketsHighlight |= BRHLF_BKGND;
   bBracketsHighlightVisibleArea =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_HIGHLIGHT_VISIBLEAREA);
-  bBracketsRightExistsOK = 
+  bBracketsRightExistsOK =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_RIGHTEXISTS_OK);
 
   uState = CheckBox_GetState(hDlg, IDC_CH_BRACKETS_DODOUBLEQUOTE);
@@ -272,15 +272,15 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
   bBracketsDoTag = (uState == BST_CHECKED);
   bBracketsHighlightTag = (uState == BST_INDETERMINATE);
 
-  bBracketsDoSingleQuoteIf = 
+  bBracketsDoSingleQuoteIf =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF);
-  bBracketsDoTag2 = 
+  bBracketsDoTag2 =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOTAG2);
-  bBracketsDoTagIf = 
+  bBracketsDoTagIf =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_DOTAGIF);
   bBracketsSkipEscaped1 =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPESCAPED1);
-  bBracketsSkipComment1 = 
+  bBracketsSkipComment1 =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_SKIPCOMMENT1);
 
   return TRUE;
@@ -467,7 +467,7 @@ static void showPluginStatus(HWND hDlg)
   if (g_bOldWindows)
   {
     DlgItem_SetText(hDlg, IDC_ST_PLUGINSTATE, FALSE,
-      g_bInitialized ? xbrGetStrA(XBR_STR_PLUGINSTATUSACTIVE, g_LangSystem) : 
+      g_bInitialized ? xbrGetStrA(XBR_STR_PLUGINSTATUSACTIVE, g_LangSystem) :
         xbrGetStrA(XBR_STR_PLUGINSTATUSNOTACTIVE, g_LangSystem) );
   }
   else
@@ -497,7 +497,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
     }
     else
     {
-      PLUGINFUNCTION* pfA = (PLUGINFUNCTION *) SendMessageA( g_hMainWnd, 
+      PLUGINFUNCTION* pfA = (PLUGINFUNCTION *) SendMessageA( g_hMainWnd,
         AKD_DLLFINDA, (WPARAM) strPluginFuncMainW, 0 );
       if (pfA)
       {
@@ -546,13 +546,13 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
 
   AnyWindow_CenterWindow(hDlg, g_hMainWnd, FALSE);
 
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_AUTOCOMPLETE, bBracketsAutoComplete);
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_RIGHTEXISTS_OK, bBracketsRightExistsOK);
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_HIGHLIGHT, (uBracketsHighlight & BRHLF_ENABLED) != 0);
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_HIGHLIGHT_VISIBLEAREA, bBracketsHighlightVisibleArea);
   CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETCOLOR, (uBracketsHighlight & BRHLF_TEXT) != 0);
@@ -565,7 +565,7 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
     uState = BST_CHECKED;
   else if (bBracketsHighlightDoubleQuote)
     uState = BST_INDETERMINATE;
-  CheckBox_SetState(hDlg, 
+  CheckBox_SetState(hDlg,
     IDC_CH_BRACKETS_DODOUBLEQUOTE, uState);
 
   uState = BST_UNCHECKED;
@@ -573,7 +573,7 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
     uState = BST_CHECKED;
   else if (bBracketsHighlightSingleQuote)
     uState = BST_INDETERMINATE;
-  CheckBox_SetState(hDlg,  
+  CheckBox_SetState(hDlg,
     IDC_CH_BRACKETS_DOSINGLEQUOTE, uState);
 
   uState = BST_UNCHECKED;
@@ -581,44 +581,44 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
     uState = BST_CHECKED;
   else if (bBracketsHighlightTag)
     uState = BST_INDETERMINATE;
-  CheckBox_SetState(hDlg, 
+  CheckBox_SetState(hDlg,
     IDC_CH_BRACKETS_DOTAG, uState);
 
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_DOSINGLEQUOTEIF, bBracketsDoSingleQuoteIf);
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_DOTAG2, bBracketsDoTag2);
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_DOTAGIF, bBracketsDoTagIf);
   CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_SKIPESCAPED1, bBracketsSkipEscaped1);
-  CheckBox_SetCheck(hDlg, 
+  CheckBox_SetCheck(hDlg,
     IDC_CH_BRACKETS_SKIPCOMMENT1, bBracketsSkipComment1);
-  DlgItem_EnableWindow(hDlg, 
+  DlgItem_EnableWindow(hDlg,
     IDC_CH_BRACKETS_RIGHTEXISTS_OK, bBracketsAutoComplete);
   bEnable = ((uBracketsHighlight & BRHLF_ENABLED) != 0);
-  DlgItem_EnableWindow(hDlg, 
+  DlgItem_EnableWindow(hDlg,
     IDC_CH_BRACKETS_HIGHLIGHT_VISIBLEAREA, bEnable);
   DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETCOLOR, bEnable);
   DlgItem_EnableWindow(hDlg, IDC_BT_BRACKETCOLOR, bEnable);
   DlgItem_EnableWindow(hDlg, IDC_CH_BKGNDCOLOR, bEnable);
   DlgItem_EnableWindow(hDlg, IDC_BT_BKGNDCOLOR, bEnable);
-  DlgItem_EnableWindow(hDlg, 
+  DlgItem_EnableWindow(hDlg,
     IDC_ED_BRACKETS_SKIPESCAPED1, bBracketsSkipEscaped1);
-  DlgItem_EnableWindow(hDlg, 
+  DlgItem_EnableWindow(hDlg,
     IDC_ST_BRACKETS_SKIPESCAPED1, bBracketsSkipEscaped1);
-  DlgItem_EnableWindow(hDlg, 
+  DlgItem_EnableWindow(hDlg,
     IDC_ED_BRACKETS_SKIPCOMMENT1, bBracketsSkipComment1);
-  DlgItem_EnableWindow(hDlg, 
+  DlgItem_EnableWindow(hDlg,
     IDC_ST_BRACKETS_SKIPCOMMENT1, bBracketsSkipComment1);
 
   DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTEIF, bBracketsDoSingleQuote || bBracketsHighlightSingleQuote);
-  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF, 
+  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF,
     (bBracketsDoSingleQuote || bBracketsHighlightSingleQuote) ? bBracketsDoSingleQuoteIf : FALSE);
 
   DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOTAG2, bBracketsDoTag || bBracketsHighlightTag);
   DlgItem_EnableWindow(hDlg, IDC_CH_BRACKETS_DOTAGIF, bBracketsDoTag || bBracketsHighlightTag);
-  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOTAGIF, 
+  DlgItem_EnableWindow(hDlg, IDC_ED_BRACKETS_DOTAGIF,
     (bBracketsDoTag || bBracketsHighlightTag) ? bBracketsDoTagIf : FALSE);
 
   xbrSetSettingsDlgLang(hDlg, g_LangSystem);
@@ -669,7 +669,7 @@ void SettingsDlg_UpdateStateOfChBrackets(HWND hDlg, BOOL bInvert)
       uState = BST_INDETERMINATE;
     }
   }
-  SendMessage(GetDlgItem(hDlg, IDC_CH_BRACKETS_HIGHLIGHT), 
+  SendMessage(GetDlgItem(hDlg, IDC_CH_BRACKETS_HIGHLIGHT),
     BM_SETCHECK, uState, 0);
 }
 
@@ -733,16 +733,16 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
 
   if (g_bOldWindows)
   {
-    hToolTip = CreateWindowExA(WS_EX_TOPMOST, TOOLTIPS_CLASSA, 
-      0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP, 
-      CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 
+    hToolTip = CreateWindowExA(WS_EX_TOPMOST, TOOLTIPS_CLASSA,
+      0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+      CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
       hDlg, 0, g_hInstanceDLL, 0);
   }
   else
   {
-    hToolTip = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW, 
-      0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP, 
-      CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 
+    hToolTip = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW,
+      0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+      CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
       hDlg, 0, g_hInstanceDLL, 0);
 
   }
@@ -757,15 +757,15 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
       TOOLINFOA tiA;
       const char* cszHintTextA = xbrGetStrA(XBR_STR_HINTAUTOCOMPLHGLT, g_LangSystem);
 
-      fillToolInfoA( &tiA, (LPSTR) cszHintTextA, 
+      fillToolInfoA( &tiA, (LPSTR) cszHintTextA,
         GetDlgItem(hDlg, IDC_CH_BRACKETS_DODOUBLEQUOTE), ++uId );
       SendMessage( hToolTip, TTM_ADDTOOLA, 0, (LPARAM) &tiA );
 
-      fillToolInfoA( &tiA, (LPSTR) cszHintTextA, 
+      fillToolInfoA( &tiA, (LPSTR) cszHintTextA,
         GetDlgItem(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTE), ++uId );
       SendMessage( hToolTip, TTM_ADDTOOLA, 0, (LPARAM) &tiA );
 
-      fillToolInfoA( &tiA, (LPSTR) cszHintTextA, 
+      fillToolInfoA( &tiA, (LPSTR) cszHintTextA,
         GetDlgItem(hDlg, IDC_CH_BRACKETS_DOTAG), ++uId );
       SendMessage( hToolTip, TTM_ADDTOOLA, 0, (LPARAM) &tiA );
     }
@@ -774,15 +774,15 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
       TOOLINFOW tiW;
       const WCHAR* cszHintTextW = xbrGetStrW(XBR_STR_HINTAUTOCOMPLHGLT, g_LangSystem);
 
-      fillToolInfoW( &tiW, (LPWSTR) cszHintTextW, 
+      fillToolInfoW( &tiW, (LPWSTR) cszHintTextW,
         GetDlgItem(hDlg, IDC_CH_BRACKETS_DODOUBLEQUOTE), ++uId );
       SendMessageW( hToolTip, TTM_ADDTOOLW, 0, (LPARAM) &tiW );
 
-      fillToolInfoW( &tiW, (LPWSTR) cszHintTextW, 
+      fillToolInfoW( &tiW, (LPWSTR) cszHintTextW,
         GetDlgItem(hDlg, IDC_CH_BRACKETS_DOSINGLEQUOTE), ++uId );
       SendMessageW( hToolTip, TTM_ADDTOOLW, 0, (LPARAM) &tiW );
 
-      fillToolInfoW( &tiW, (LPWSTR) cszHintTextW, 
+      fillToolInfoW( &tiW, (LPWSTR) cszHintTextW,
         GetDlgItem(hDlg, IDC_CH_BRACKETS_DOTAG), ++uId );
       SendMessageW( hToolTip, TTM_ADDTOOLW, 0, (LPARAM) &tiW );
 

@@ -19,7 +19,7 @@
   #endif
 #endif
 
-// this definition enables or disables 
+// this definition enables or disables
 // additional Unicode functions for controls
 // 1 - on, 0 - off
 #define any_ctrl_enable_w_members 1
@@ -30,4 +30,3 @@
 
 //-------------------------------------------------------------------------
 #endif
-

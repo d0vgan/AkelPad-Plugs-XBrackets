@@ -878,12 +878,6 @@ static void updateActualState(HWND hEditWnd)
   }
 }
 
-static void setSelAndAdjustCaretPos(HWND hEditWnd, const CHARRANGE_X* pcrSel)
-{
-  SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) pcrSel);
-  AdjustCaretPosition(hEditWnd, (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP], (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN]);
-}
-
 void OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags)
 {
   int         i;
@@ -2017,7 +2011,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback2(UINT_PTR dwCookie, AECHARRAN
   (crAkelRange); // unreferenced parameter
 
   cookie = (tGetHighlightIndexesCookie *) dwCookie;
-  
+
   CharacterHighlightData_Clear(&cookie->chd);
 
   if (hlp->qm.lpQuote)
@@ -2095,7 +2089,7 @@ static void GetFoldFromAkelEdit(const INT_X nCharacterPosition, tGetHighlightInd
       nRightBrType = getRightBracketTypeEx(wch2, BTF_HIGHLIGHT);
       if (nRightBrType != nLeftBrType)
         return; // not a bracket pair
-      
+
       pCookie->pos1 = nFmPos1;
       pCookie->pos2 = nFmPos2;
       pCookie->nBracketType = nLeftBrType;
@@ -2652,7 +2646,7 @@ static BOOL NearestBr_GetFoldOrQuoteFromAkelEdit(const INT_X nPos, const unsigne
         nFmBrType = cookie.nBracketType;
       }
     }
-    
+
     if ( (nAtBrFQFlags & fqfDoNotCheckQuote) == 0 )
     {
       // check for a quote...
@@ -2675,7 +2669,7 @@ static BOOL NearestBr_GetFoldOrQuoteFromAkelEdit(const INT_X nPos, const unsigne
       }
     }
 
-    // pick the nearest range, if any... 
+    // pick the nearest range, if any...
     if (nFmPos1 >= 0 && nFmPos2 >= 0)
     {
       if (nQmPos1 >= 0 && nQmPos2 >= 0)
@@ -3579,7 +3573,7 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
   NearestBracketsIndexes[0] = -1;
   NearestBracketsIndexes[1] = -1;
   NearestBracketsIndexes[2] = tbtNone;
-  
+
   return FALSE;
 }
 
@@ -3734,7 +3728,7 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
   {
     if ( state.nRightBrType == tbtNone || state.nRightBrType != state.nLeftBrType ||
          ((flags & gnbrfWiden) == 0 && brCookie.pos2 - brCookie.pos1 < state.nRightBrPos - state.nLeftBrPos) ||
-         ( (flags & gnbrfWiden) && 
+         ( (flags & gnbrfWiden) &&
            ((brCookie.pos2 - brCookie.pos1 > state.nRightBrPos - state.nLeftBrPos &&
              state.crCurrent.cpMax - state.crCurrent.cpMin >= state.nRightBrPos - state.nLeftBrPos) ||
             (brCookie.pos2 - brCookie.pos1 < state.nRightBrPos - state.nLeftBrPos &&
@@ -3744,7 +3738,7 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
     {
       state.nLeftBrPos = brCookie.pos1;
       state.nRightBrPos = brCookie.pos2;
-      state.nLeftBrType = brCookie.nBracketType;    
+      state.nLeftBrType = brCookie.nBracketType;
       state.nRightBrType = brCookie.nBracketType;
       state.nLeftDupDirection = DP_NONE;
       state.nRightDupDirection = DP_NONE;
@@ -3770,7 +3764,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
   curr_cr.cpMax = nCharacterPosition;
   if ( GetNearestBracketsRange(action, 0, nCharacterPosition, &curr_cr, &out_cr) )
   {
-    setSelAndAdjustCaretPos(hEditWnd, &out_cr);
+    SetSelAndAdjustCaretPos(hEditWnd, &out_cr);
   }
 }
 
@@ -6004,7 +5998,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
           if (nInnerRightBrType == tbtNone)
             nInnerRightBrTypeInversed = getLeftBracketType(right_ch, BTF_HIGHLIGHT);  //  ...[|
 
-          if (nInnerLeftBrType != tbtNone && nInnerLeftBrType == nInnerRightBrType && 
+          if (nInnerLeftBrType != tbtNone && nInnerLeftBrType == nInnerRightBrType &&
               nJoined == nbrjNone && crOldSel.cpMin != crOldSel.cpMax - 1)
             bInnerBracketsSelected = TRUE;
         }
@@ -6017,7 +6011,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       //  [|(...)|]  -->  |[(...)]|
       crNewSel.cpMin = crOldSel.cpMin - 1;
       crNewSel.cpMax = crOldSel.cpMax + 1;
-      setSelAndAdjustCaretPos(hWndEdit, &crNewSel);
+      SetSelAndAdjustCaretPos(hWndEdit, &crNewSel);
       return TRUE;
     }
 
@@ -6155,7 +6149,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       if ( (crNewSel.cpMin < crOldSel.cpMin && crNewSel.cpMax >= crOldSel.cpMax) ||
            (crNewSel.cpMin <= crOldSel.cpMin && crNewSel.cpMax > crOldSel.cpMax) )
       {
-        setSelAndAdjustCaretPos(hWndEdit, &crNewSel);
+        SetSelAndAdjustCaretPos(hWndEdit, &crNewSel);
         return TRUE;
       }
 
@@ -6169,7 +6163,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
           if ( (nJoined == nbrjLeftNearby && nInnerRightBrType != tbtNone) ||
                (nJoined == nbrjRightNearby && nInnerLeftBrType != tbtNone) )
           {
-            setSelAndAdjustCaretPos(hWndEdit, &crJoinSel);
+            SetSelAndAdjustCaretPos(hWndEdit, &crJoinSel);
             return TRUE;
           }
         }
@@ -6188,7 +6182,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
         if ( (crNewSelOuter.cpMin < crOldSel.cpMin && crNewSelOuter.cpMax >= crOldSel.cpMax) ||
              (crNewSelOuter.cpMin <= crOldSel.cpMin && crNewSelOuter.cpMax > crOldSel.cpMax) )
         {
-          setSelAndAdjustCaretPos(hWndEdit, &crNewSelOuter);
+          SetSelAndAdjustCaretPos(hWndEdit, &crNewSelOuter);
           return TRUE;
         }
 
@@ -6203,7 +6197,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
             if ( (nJoined == nbrjLeftNearby && nInnerRightBrType != tbtNone) ||
                  (nJoined == nbrjRightNearby && nInnerLeftBrType != tbtNone) )
             {
-              setSelAndAdjustCaretPos(hWndEdit, &crJoinSel);
+              SetSelAndAdjustCaretPos(hWndEdit, &crJoinSel);
               return TRUE;
             }
           }
@@ -6226,29 +6220,54 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
 
 void AdjustCaretPosition(HWND hWndEdit, int nLinesVisibleUp, int nLinesVisibleDown)
 {
-  INT_X nFirstVisibleLine;
-  INT_X nLastVisibleLine;
-  INT_X nFirstSelLine;
-  INT_X nLastSelLine;
-  INT_X nCaretLine;
-  INT_X nDeltaFirst;
-  INT_X nDeltaLast;
-  int   nScrollLines = 0;
+  int nFirstVisibleLine;
+  int nLastVisibleLine;
+  int nFirstSelLine;
+  int nLastSelLine;
+  int nCaretLine;
+  int nDeltaFirst;
+  int nDeltaLast;
+  int nScrollLines = 0;
 
-  nFirstVisibleLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTFULLVISIBLELINE, 0);
-  nLastVisibleLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTFULLVISIBLELINE, 0);
-  nFirstSelLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTSELLINE, 0);
-  nLastSelLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTSELLINE, 0);
-  nCaretLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
+  nFirstVisibleLine = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTFULLVISIBLELINE, 0);
+  nLastVisibleLine = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTFULLVISIBLELINE, 0);
+  nFirstSelLine = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTSELLINE, 0);
+  nLastSelLine = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTSELLINE, 0);
+  nCaretLine = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
 
   nDeltaFirst = nCaretLine - nFirstVisibleLine;
   nDeltaLast = nLastVisibleLine - nCaretLine;
 
-  if (nCaretLine == nFirstSelLine && nDeltaFirst < nLinesVisibleUp && nDeltaLast >= 2 * nLinesVisibleUp)
+  if (nCaretLine == nFirstSelLine && nDeltaFirst < nLinesVisibleUp && nDeltaLast >= 2*nLinesVisibleUp)
     nScrollLines = nDeltaFirst - nLinesVisibleUp;
-  else if (nCaretLine == nLastSelLine && nDeltaLast < nLinesVisibleDown && nDeltaFirst >= 2 * nLinesVisibleDown)
+  else if (nCaretLine == nLastSelLine && nDeltaLast < nLinesVisibleDown && nDeltaFirst >= 2*nLinesVisibleDown)
     nScrollLines = nLinesVisibleDown - nDeltaLast;
 
   if (nScrollLines != 0)
     SendMessage(hWndEdit, AEM_LINESCROLL, AESB_VERT, nScrollLines);
+}
+
+void SetSelAndAdjustCaretPos(HWND hWndEdit, const void* crSel)
+{
+  int nCaretLineOld;
+  int nCaretLineNew;
+  int nDelta;
+  int nLinesVisUp;
+  int nLinesVisDown;
+
+  nLinesVisUp = (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP];
+  nLinesVisDown = (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN];
+
+  nCaretLineOld = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
+  SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) crSel);
+  nCaretLineNew = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
+
+  nDelta = nCaretLineOld - nCaretLineNew;
+  if (nDelta < 0)
+    nLinesVisUp = 0;
+  else
+    nLinesVisDown = 0;
+
+  if (nDelta != 0)
+    AdjustCaretPosition(hWndEdit, nLinesVisUp, nLinesVisDown);
 }

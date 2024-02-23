@@ -19,7 +19,7 @@ typedef struct sDlgItemLngW {
 
 
 /* ENG */
-tDlgItemLngA xbrSettingsDlgItemsA_eng[] = 
+tDlgItemLngA xbrSettingsDlgItemsA_eng[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          "Autocomplete brackets ([{\"\"}])"                   },
     { IDC_CH_BRACKETS_HIGHLIGHT,             "Highlight brackets"                                 },
@@ -42,7 +42,7 @@ tDlgItemLngA xbrSettingsDlgItemsA_eng[] =
     { 0,                                     0                                                    }
 };
 
-tDlgItemLngW xbrSettingsDlgItemsW_eng[] = 
+tDlgItemLngW xbrSettingsDlgItemsW_eng[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          L"Autocomplete brackets ([{\"\"}])"                   },
     { IDC_CH_BRACKETS_HIGHLIGHT,             L"Highlight brackets"                                 },
@@ -66,7 +66,7 @@ tDlgItemLngW xbrSettingsDlgItemsW_eng[] =
 };
 
 /* RUS */
-tDlgItemLngA xbrSettingsDlgItemsA_rus[] = 
+tDlgItemLngA xbrSettingsDlgItemsA_rus[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          "\xC0\xE2\xF2\xEE\xE7\xE0\xEA\xF0\xFB\xF2\xE8\xE5\x20\xF1\xEA\xEE\xE1\xEE\xEA ([{\"\"}])"            },
     { IDC_CH_BRACKETS_HIGHLIGHT,             "\xCF\xEE\xE4\xF1\xE2\xE5\xF7\xE8\xE2\xE0\xF2\xFC\x20\xF1\xEA\xEE\xE1\xEA\xE8"                       },
@@ -89,7 +89,7 @@ tDlgItemLngA xbrSettingsDlgItemsA_rus[] =
     { 0,                                     0                                                                                                    }
 };
 
-tDlgItemLngW xbrSettingsDlgItemsW_rus[] = 
+tDlgItemLngW xbrSettingsDlgItemsW_rus[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          L"\x0410\x0432\x0442\x043E\x0437\x0430\x043A\x0440\x044B\x0442\x0438\x0435\x0020\x0441\x043A\x043E\x0431\x043E\x043A ([{\"\"}])"                    },
     { IDC_CH_BRACKETS_HIGHLIGHT,             L"\x041F\x043E\x0434\x0441\x0432\x0435\x0447\x0438\x0432\x0430\x0442\x044C\x0020\x0441\x043A\x043E\x0431\x043A\x0438"                               },
@@ -113,7 +113,7 @@ tDlgItemLngW xbrSettingsDlgItemsW_rus[] =
 };
 
 /* UKR */
-tDlgItemLngA xbrSettingsDlgItemsA_ukr[] = 
+tDlgItemLngA xbrSettingsDlgItemsA_ukr[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          "\xC0\xE2\xF2\xEE\xE7\xE0\xEA\xF0\xE8\xF2\xF2\xFF\x20\xE4\xF3\xE6\xEE\xEA ([{\"\"}])"                    },
     { IDC_CH_BRACKETS_HIGHLIGHT,             "\xCF\xB3\xE4\xF1\xE2\xB3\xF7\xF3\xE2\xE0\xF2\xE8\x20\xE4\xF3\xE6\xEA\xE8"                               },
@@ -136,7 +136,7 @@ tDlgItemLngA xbrSettingsDlgItemsA_ukr[] =
     { 0,                                     0                                                                                                        }
 };
 
-tDlgItemLngW xbrSettingsDlgItemsW_ukr[] = 
+tDlgItemLngW xbrSettingsDlgItemsW_ukr[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          L"\x0410\x0432\x0442\x043E\x0437\x0430\x043A\x0440\x0438\x0442\x0442\x044F\x0020\x0434\x0443\x0436\x043E\x043A ([{\"\"}])"                          },
     { IDC_CH_BRACKETS_HIGHLIGHT,             L"\x041F\x0456\x0434\x0441\x0432\x0456\x0447\x0443\x0432\x0430\x0442\x0438\x0020\x0434\x0443\x0436\x043A\x0438"                                     },
@@ -364,14 +364,14 @@ void xbrSetAutocompleteWindowText(HWND hDlg, LANGID sysLangId)
 }
 
 /* ENG */
-const char* strA_eng[XBR_STRCOUNT] = 
+const char* strA_eng[XBR_STRCOUNT] =
 {
     "Status: the plugin is active",
     "Status: the plugin is NOT active",
     "Autocomplete + highlight / Highlight only / Off"
 };
 
-const wchar_t* strW_eng[XBR_STRCOUNT] = 
+const wchar_t* strW_eng[XBR_STRCOUNT] =
 {
     L"Status: the plugin is active",
     L"Status: the plugin is NOT active",
@@ -379,14 +379,14 @@ const wchar_t* strW_eng[XBR_STRCOUNT] =
 };
 
 /* RUS */
-const char* strA_rus[XBR_STRCOUNT] = 
+const char* strA_rus[XBR_STRCOUNT] =
 {
     "\xD1\xEE\xF1\xF2\xEE\xFF\xED\xE8\xE5\x3A\x20\xEF\xEB\xE0\xE3\xE8\xED\x20\xE0\xEA\xF2\xE8\xE2\xE5\xED",
     "\xD1\xEE\xF1\xF2\xEE\xFF\xED\xE8\xE5\x3A\x20\xEF\xEB\xE0\xE3\xE8\xED\x20\xCD\xC5\x20\xE0\xEA\xF2\xE8\xE2\xE5\xED",
     "\xC0\xE2\xF2\xEE\xE7\xE0\xEA\xF0\xFB\xF2\xE8\xE5 + \xEF\xEE\xE4\xF1\xE2\xE5\xF2\xEA\xE0 / \xD2\xEE\xEB\xFC\xEA\xEE\x20\xEF\xEE\xE4\xF1\xE2\xE5\xF2\xEA\xE0 / \xC2\xFB\xEA\xEB\x2E"
 };
 
-const wchar_t* strW_rus[XBR_STRCOUNT] = 
+const wchar_t* strW_rus[XBR_STRCOUNT] =
 {
     L"\x0421\x043E\x0441\x0442\x043E\x044F\x043D\x0438\x0435\x003A\x0020\x043F\x043B\x0430\x0433\x0438\x043D\x0020\x0430\x043A\x0442\x0438\x0432\x0435\x043D",
     L"\x0421\x043E\x0441\x0442\x043E\x044F\x043D\x0438\x0435\x003A\x0020\x043F\x043B\x0430\x0433\x0438\x043D\x0020\x041D\x0415\x0020\x0430\x043A\x0442\x0438\x0432\x0435\x043D",
@@ -394,14 +394,14 @@ const wchar_t* strW_rus[XBR_STRCOUNT] =
 };
 
 /* UKR */
-const char* strA_ukr[XBR_STRCOUNT] = 
+const char* strA_ukr[XBR_STRCOUNT] =
 {
     "\xD1\xF2\xE0\xED\x3A\x20\xEF\xEB\xE0\xE3\xB3\xED\x20\xE0\xEA\xF2\xE8\xE2\xED\xE8\xE9",
     "\xD1\xF2\xE0\xED\x3A\x20\xEF\xEB\xE0\xE3\xB3\xED\x20\xCD\xC5\x20\xE0\xEA\xF2\xE8\xE2\xED\xE8\xE9",
     "\xC0\xE2\xF2\xEE\xE7\xE0\xEA\xF0\xE8\xF2\xF2\xFF + \xEF\xB3\xE4\xF1\xE2\xB3\xF7\xF3\xE2\xE0\xED\xED\xFF / \xD2\xB3\xEB\xFC\xEA\xE8\x20\xEF\xB3\xE4\xF1\xE2\xB3\xF7\xF3\xE2\xE0\xED\xED\xFF / \xC2\xE8\xEC\xEA\x2E"
 };
 
-const wchar_t* strW_ukr[XBR_STRCOUNT] = 
+const wchar_t* strW_ukr[XBR_STRCOUNT] =
 {
     L"\x0421\x0442\x0430\x043D\x003A\x0020\x043F\x043B\x0430\x0433\x0456\x043D\x0020\x0430\x043A\x0442\x0438\x0432\x043D\x0438\x0439",
     L"\x0421\x0442\x0430\x043D\x003A\x0020\x043F\x043B\x0430\x0433\x0456\x043D\x0020\x041D\x0415\x0020\x0430\x043A\x0442\x0438\x0432\x043D\x0438\x0439",

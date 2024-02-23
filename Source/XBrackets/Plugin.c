@@ -518,8 +518,7 @@ static BOOL InvertCaretPositionInTheSelection(const HWND hEditWnd, const CHARRAN
   else
     return FALSE;
 
-  SendMessage(hEditWnd, EM_EXSETSEL_X, 0, (LPARAM) &crNewSel);
-  AdjustCaretPosition(hEditWnd, (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP], (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN]);
+  SetSelAndAdjustCaretPos(hEditWnd, &crNewSel);
   return TRUE;
 }
 
@@ -607,8 +606,7 @@ static BOOL DoMatchingBracketAction(const PLUGINDATA *pd, int action)
             else*/
               cr.cpMax = pos;
           }
-          SendMessage(pd->hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) &cr);
-          AdjustCaretPosition(pd->hWndEdit, (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP], (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN]);
+          SetSelAndAdjustCaretPos(pd->hWndEdit, &cr);
           return TRUE;
         }
       }

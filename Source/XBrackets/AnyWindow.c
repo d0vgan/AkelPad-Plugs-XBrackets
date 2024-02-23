@@ -79,4 +79,3 @@ BOOL AnyWindow_ShowWindow(HWND hWnd, INT nCmdShow)
   }
 
 #endif
-
