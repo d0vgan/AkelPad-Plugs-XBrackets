@@ -6230,33 +6230,24 @@ void AdjustCaretPosition(HWND hWndEdit, int nLinesVisibleUp, int nLinesVisibleDo
   INT_X nLastVisibleLine;
   INT_X nFirstSelLine;
   INT_X nLastSelLine;
+  INT_X nCaretLine;
   INT_X nDeltaFirst;
   INT_X nDeltaLast;
-  INT_X nCaretLine;
   int   nScrollLines = 0;
 
   nFirstVisibleLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTFULLVISIBLELINE, 0);
   nLastVisibleLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTFULLVISIBLELINE, 0);
   nFirstSelLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_FIRSTSELLINE, 0);
   nLastSelLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_LASTSELLINE, 0);
-  nDeltaFirst = nFirstSelLine - nFirstVisibleLine;
-  nDeltaLast = nLastVisibleLine - nLastSelLine;
+  nCaretLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
 
-  if (nFirstSelLine == nLastSelLine)
-  {
-    if (nDeltaFirst < nLinesVisibleUp && nDeltaLast > nLinesVisibleUp + nLinesVisibleDown)
-      nScrollLines = -nLinesVisibleUp;
-    else if (nDeltaLast < nLinesVisibleDown && nDeltaFirst > nLinesVisibleUp + nLinesVisibleDown)
-      nScrollLines = nLinesVisibleDown;
-  }
-  else
-  {
-    nCaretLine = SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
-    if (nCaretLine == nFirstSelLine && nDeltaFirst < nLinesVisibleUp)
-      nScrollLines = -nLinesVisibleUp;
-    else if (nCaretLine == nLastSelLine && nDeltaLast < nLinesVisibleDown)
-      nScrollLines = nLinesVisibleDown;
-  }
+  nDeltaFirst = nCaretLine - nFirstVisibleLine;
+  nDeltaLast = nLastVisibleLine - nCaretLine;
+
+  if (nCaretLine == nFirstSelLine && nDeltaFirst < nLinesVisibleUp && nDeltaLast >= 2 * nLinesVisibleUp)
+    nScrollLines = nDeltaFirst - nLinesVisibleUp;
+  else if (nCaretLine == nLastSelLine && nDeltaLast < nLinesVisibleDown && nDeltaFirst >= 2 * nLinesVisibleDown)
+    nScrollLines = nLinesVisibleDown - nDeltaLast;
 
   if (nScrollLines != 0)
     SendMessage(hWndEdit, AEM_LINESCROLL, AESB_VERT, nScrollLines);
