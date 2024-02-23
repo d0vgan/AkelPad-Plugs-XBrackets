@@ -264,6 +264,7 @@ History:
 v.8.1
  * Glory to Ukraine! Glory to the heroes!
  + added: gotobr.lines_vis_up, gotobr.lines_vis_down and gotobr.pair_line_diff
+ - fixed: no more flickering of highlighted brackets while AkelPad is exiting
 
 v.8.0 (January 2024)
  * Glory to Ukraine! Glory to the heroes!
