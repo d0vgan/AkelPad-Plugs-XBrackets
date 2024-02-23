@@ -77,7 +77,7 @@ BOOL         bBracketsSkipEscaped1 = FALSE;
 BOOL         bBracketsSkipComment1 = FALSE;
 BOOL         bGoToMatchingBracketTriggered = FALSE;
 BOOL         bAkelPadIsStarting = FALSE; // when XBrackets is not autoloaded, it _must_ be FALSE
-BOOL         bAkelPadIsFinishing = FALSE;
+int          nAkelPadIsClosing = 0;
 BOOL         bIsMainWindowShown = FALSE;
 BOOL         bOpeningNewDocument = FALSE;
 BOOL         bDocumentJustOpened = FALSE;
@@ -948,7 +948,11 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       if (pEditProcData && pEditProcData->NextProc)
         lResult = pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
-      if (bDocumentJustOpened && (hWnd == hDocumentJustOpenedWnd))
+      if (nAkelPadIsClosing != 0)
+      {
+        // do nothing
+      }
+      else if (bDocumentJustOpened && (hWnd == hDocumentJustOpenedWnd))
       {
         unsigned int uFlags;
 
@@ -998,7 +1002,7 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   {
     LRESULT lResult = 0;
 
-    bAkelPadIsFinishing = TRUE;
+    ++nAkelPadIsClosing;
 
     if (pMainProcData && pMainProcData->NextProc)
       lResult = pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
@@ -1082,6 +1086,30 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
       return lResult;
     }
+    else if (uMsg == WM_CLOSE)
+    {
+      LRESULT lResult = 0;
+
+      nAkelPadIsClosing = 1;
+
+      if (pMainProcData && pMainProcData->NextProc)
+        lResult = pMainProcData->NextProc(hWnd, uMsg, wParam, lParam);
+
+      nAkelPadIsClosing = 0;
+
+      if (IsBracketsHighlight(uBracketsHighlight))
+      {
+        EDITINFO ei;
+
+        ei.hWndEdit = NULL;
+        if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei) != 0)
+        {
+          OnEditGetActiveBrackets(ei.hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
+        }
+      }
+
+      return lResult;
+    }
     else
       EditParentMessages(hWnd, uMsg, wParam, lParam);
   }
@@ -1150,7 +1178,7 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (wParam == ID_EDIT)
     {
       NMHDR* pnmhdr = (NMHDR *) lParam;
-      if (pnmhdr->hwndFrom == g_hFocusedEditWnd)
+      if (pnmhdr->hwndFrom == g_hFocusedEditWnd && nAkelPadIsClosing == 0)
       {
         if (pnmhdr->code == EN_SELCHANGE)
         {
@@ -1200,7 +1228,11 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   }
   else if (uMsg == AKDN_FRAME_ACTIVATE)
   {
-    if ((g_nMDI == WMD_PMDI) && !(wParam & FWA_NOVISUPDATE))
+    if (nAkelPadIsClosing != 0 && (wParam & (FWA_NOTIFY_AFTERDESTROY|FWA_NOTIFY_BEFOREDESTROY)) != 0)
+    {
+      RemoveAllHighlightInfo(FALSE);
+    }
+    else if ((g_nMDI == WMD_PMDI) && !(wParam & FWA_NOVISUPDATE))
     {
       if (IsBracketsHighlight(uBracketsHighlight))
       {
