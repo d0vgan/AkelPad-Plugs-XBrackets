@@ -221,12 +221,25 @@ Additional options (file "AkelFiles\Plugs\XBrackets.ini"):
   gotobr.lines_vis_up = 1
     Number of lines that must be visible above the active bracket right after
     "GoToMatchingBracket", "SelToMatchingBracket", "GoToNearestBracket" or
-    "SelToNearestBrackets" has been called.
+    "SelToNearestBrackets" has been called. See also: 'gotobr.pair_line_diff'.
 
   gotobr.lines_vis_down = 0
     Number of lines that must be visible below the active bracket right after
     "GoToMatchingBracket", "SelToMatchingBracket", "GoToNearestBracket" or
-    "SelToNearestBrackets" has been called.
+    "SelToNearestBrackets" has been called. See also: 'gotobr.pair_line_diff'.
+
+  gotobr.pair_line_diff = 1
+    Minimal line difference between the opening and the closing bracket to
+    apply the 'gotobr.lines_vis_up' and 'gotobr.lines_vis_down' options.
+    For example:
+    0 - the opening and the closing bracket can be on the same line.
+    1 - the opening and the closing bracket should not be on the same line.
+    2 - the opening and the closing bracket should not be on the adjacent lines.
+    3 - there must be at least 2 lines between the opening and the closing bracket.
+    And so on.
+    If the actual line difference between the opening and the closing bracket is
+    less than the specified value, 'lines_vis_up' and 'lines_vis_down' are
+    ignored and the additional scrolling does not happen.
 
 The plugin allows you to change the additional options without closing AkelPad.
 In three steps, in this order:
@@ -250,7 +263,7 @@ History:
 --------
 v.8.1
  * Glory to Ukraine! Glory to the heroes!
- + added: 'gotobr.lines_vis_up' and 'gotobr.lines_vis_down'
+ + added: gotobr.lines_vis_up, gotobr.lines_vis_down and gotobr.pair_line_diff
 
 v.8.0 (January 2024)
  * Glory to Ukraine! Glory to the heroes!

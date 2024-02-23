@@ -151,64 +151,66 @@ extern TEXTMETRICA  AenPaint_tmA;
 
 static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   // dword options
-  "autocomplete.all_autobr",
-  "autocomplete.ovr_autobr",
-  "autocomplete.sel_autobr",
-  "highlight.hlt_bothbr",
-  "highlight.hlt_style",
-  "highlight.hlt_xmode",
-  "highlight.quote_detect_lines",
-  "highlight.quote_max_lines",
-  "highlight.br_max_lines",
-  "nearestbr.goto_flags",
-  "nearestbr.selto_flags",
-  "nearestbr.max_lines",
-  "gotobr.lines_vis_up",
-  "gotobr.lines_vis_down",
+  /* OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR      */  "autocomplete.all_autobr",
+  /* OPT_DWORD_AUTOCOMPLETE_OVR_AUTOBR      */  "autocomplete.ovr_autobr",
+  /* OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR      */  "autocomplete.sel_autobr",
+  /* OPT_DWORD_HIGHLIGHT_HLT_BOTHBR         */  "highlight.hlt_bothbr",
+  /* OPT_DWORD_HIGHLIGHT_HLT_STYLE          */  "highlight.hlt_style",
+  /* OPT_DWORD_HIGHLIGHT_HLT_XMODE          */  "highlight.hlt_xmode",
+  /* OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES */  "highlight.quote_detect_lines",
+  /* OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES    */  "highlight.quote_max_lines",
+  /* OPT_DWORD_HIGHLIGHT_BR_MAX_LINES       */  "highlight.br_max_lines",
+  /* OPT_DWORD_NEARESTBR_GOTO_FLAGS         */  "nearestbr.goto_flags",
+  /* OPT_DWORD_NEARESTBR_SELTO_FLAGS        */  "nearestbr.selto_flags",
+  /* OPT_DWORD_NEARESTBR_MAX_LINES          */  "nearestbr.max_lines",
+  /* OPT_DWORD_GOTOBR_LINES_VIS_UP          */  "gotobr.lines_vis_up",
+  /* OPT_DWORD_GOTOBR_LINES_VIS_DOWN        */  "gotobr.lines_vis_down",
+  /* OPT_DWORD_GOTOBR_PAIR_LINE_DIFF        */  "gotobr.pair_line_diff",
   // other options
-  "common.user_brpairs",
-  "autobrackets.next_char_ok",
-  "autobrackets.prev_char_ok",
-  "OptionsFlags",
-  "HighlightRGB",
-  "HighlightBkRGB",
-  "CustomRGB",
-  "HtmlFileExts",
-  "SingleQuoteFileExts",
-  "Escaped1FileExts",
-  "Comment1FileExts",
-  "XBrackets"
+  /* OPT_COMMON_USER_BRPAIRS                */  "common.user_brpairs",
+  /* OPT_AUTOBRACKETS_NEXT_CHAR_OK          */  "autobrackets.next_char_ok",
+  /* OPT_AUTOBRACKETS_PREV_CHAR_OK          */  "autobrackets.prev_char_ok",
+  /* OPT_OPTIONSFLAGS                       */  "OptionsFlags",
+  /* OPT_HIGHLIGHTRGB                       */  "HighlightRGB",
+  /* OPT_HIGHLIGHTBKRGB                     */  "HighlightBkRGB",
+  /* OPT_CUSTOMRGB                          */  "CustomRGB",
+  /* OPT_HTMLFILEEXTS                       */  "HtmlFileExts",
+  /* OPT_SINGLEQUOTEFILEEXTS                */  "SingleQuoteFileExts",
+  /* OPT_ESCAPED1FILEEXTS                   */  "Escaped1FileExts",
+  /* OPT_COMMENT1FILEEXTS                   */  "Comment1FileExts",
+  /* OPT_XBRACKETS                          */  "XBrackets"
 };
 
 static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   // dword options
-  L"autocomplete.all_autobr",
-  L"autocomplete.ovr_autobr",
-  L"autocomplete.sel_autobr",
-  L"highlight.hlt_bothbr",
-  L"highlight.hlt_style",
-  L"highlight.hlt_xmode",
-  L"highlight.quote_detect_lines",
-  L"highlight.quote_max_lines",
-  L"highlight.br_max_lines",
-  L"nearestbr.goto_flags",
-  L"nearestbr.selto_flags",
-  L"nearestbr.max_lines",
-  L"gotobr.lines_vis_up",
-  L"gotobr.lines_vis_down",
+  /* OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR      */  L"autocomplete.all_autobr",
+  /* OPT_DWORD_AUTOCOMPLETE_OVR_AUTOBR      */  L"autocomplete.ovr_autobr",
+  /* OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR      */  L"autocomplete.sel_autobr",
+  /* OPT_DWORD_HIGHLIGHT_HLT_BOTHBR         */  L"highlight.hlt_bothbr",
+  /* OPT_DWORD_HIGHLIGHT_HLT_STYLE          */  L"highlight.hlt_style",
+  /* OPT_DWORD_HIGHLIGHT_HLT_XMODE          */  L"highlight.hlt_xmode",
+  /* OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES */  L"highlight.quote_detect_lines",
+  /* OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES    */  L"highlight.quote_max_lines",
+  /* OPT_DWORD_HIGHLIGHT_BR_MAX_LINES       */  L"highlight.br_max_lines",
+  /* OPT_DWORD_NEARESTBR_GOTO_FLAGS         */  L"nearestbr.goto_flags",
+  /* OPT_DWORD_NEARESTBR_SELTO_FLAGS        */  L"nearestbr.selto_flags",
+  /* OPT_DWORD_NEARESTBR_MAX_LINES          */  L"nearestbr.max_lines",
+  /* OPT_DWORD_GOTOBR_LINES_VIS_UP          */  L"gotobr.lines_vis_up",
+  /* OPT_DWORD_GOTOBR_LINES_VIS_DOWN        */  L"gotobr.lines_vis_down",
+  /* OPT_DWORD_GOTOBR_PAIR_LINE_DIFF        */  L"gotobr.pair_line_diff",
   // other options
-  L"common.user_brpairs",
-  L"autobrackets.next_char_ok",
-  L"autobrackets.prev_char_ok",
-  L"OptionsFlags",
-  L"HighlightRGB",
-  L"HighlightBkRGB",
-  L"CustomRGB",
-  L"HtmlFileExts",
-  L"SingleQuoteFileExts",
-  L"Escaped1FileExts",
-  L"Comment1FileExts",
-  L"XBrackets"
+  /* OPT_COMMON_USER_BRPAIRS                */  L"common.user_brpairs",
+  /* OPT_AUTOBRACKETS_NEXT_CHAR_OK          */  L"autobrackets.next_char_ok",
+  /* OPT_AUTOBRACKETS_PREV_CHAR_OK          */  L"autobrackets.prev_char_ok",
+  /* OPT_OPTIONSFLAGS                       */  L"OptionsFlags",
+  /* OPT_HIGHLIGHTRGB                       */  L"HighlightRGB",
+  /* OPT_HIGHLIGHTBKRGB                     */  L"HighlightBkRGB",
+  /* OPT_CUSTOMRGB                          */  L"CustomRGB",
+  /* OPT_HTMLFILEEXTS                       */  L"HtmlFileExts",
+  /* OPT_SINGLEQUOTEFILEEXTS                */  L"SingleQuoteFileExts",
+  /* OPT_ESCAPED1FILEEXTS                   */  L"Escaped1FileExts",
+  /* OPT_COMMENT1FILEEXTS                   */  L"Comment1FileExts",
+  /* OPT_XBRACKETS                          */  L"XBrackets"
 };
 
 int IsBracketsHighlight(UINT uBrHglt)
@@ -1799,6 +1801,8 @@ void ReadOptions(void)
     g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP] = DEFAULT_GOTOBR_LINES_VIS_UP;
   if (g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN] == OPT_UNDEFINED_DWORD)
     g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN] = DEFAULT_GOTOBR_LINES_VIS_DOWN;
+  if (g_dwOptions[OPT_DWORD_GOTOBR_PAIR_LINE_DIFF] == OPT_UNDEFINED_DWORD)
+    g_dwOptions[OPT_DWORD_GOTOBR_PAIR_LINE_DIFF] = DEFAULT_GOTOBR_PAIR_LINE_DIFF;
 
   if (g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_DETECT_LINES] > g_dwOptions[OPT_DWORD_HIGHLIGHT_QUOTE_MAX_LINES])
   {

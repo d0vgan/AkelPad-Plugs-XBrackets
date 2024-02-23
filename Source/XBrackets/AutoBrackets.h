@@ -43,6 +43,7 @@
 
 #define DEFAULT_GOTOBR_LINES_VIS_UP    1
 #define DEFAULT_GOTOBR_LINES_VIS_DOWN  0
+#define DEFAULT_GOTOBR_PAIR_LINE_DIFF  1
 
 
 enum eXBracketsAction {

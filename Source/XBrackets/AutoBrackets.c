@@ -6251,12 +6251,14 @@ void SetSelAndAdjustCaretPos(HWND hWndEdit, const void* crSel)
 {
   int nCaretLineOld;
   int nCaretLineNew;
+  int nPairLineDiff;
   int nDelta;
   int nLinesVisUp;
   int nLinesVisDown;
 
   nLinesVisUp = (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_UP];
   nLinesVisDown = (int) g_dwOptions[OPT_DWORD_GOTOBR_LINES_VIS_DOWN];
+  nPairLineDiff = (int) g_dwOptions[OPT_DWORD_GOTOBR_PAIR_LINE_DIFF];
 
   nCaretLineOld = (int) SendMessage(hWndEdit, AEM_GETLINENUMBER, AEGL_CARETLINE, 0);
   SendMessage(hWndEdit, EM_EXSETSEL_X, 0, (LPARAM) crSel);
@@ -6264,10 +6266,13 @@ void SetSelAndAdjustCaretPos(HWND hWndEdit, const void* crSel)
 
   nDelta = nCaretLineOld - nCaretLineNew;
   if (nDelta < 0)
+  {
+    nDelta = -nDelta;
     nLinesVisUp = 0;
+  }
   else
     nLinesVisDown = 0;
 
-  if (nDelta != 0)
+  if (nDelta >= nPairLineDiff)
     AdjustCaretPosition(hWndEdit, nLinesVisUp, nLinesVisDown);
 }
