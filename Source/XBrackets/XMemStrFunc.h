@@ -3,6 +3,9 @@
 //---------------------------------------------------------------------------
 #include <windows.h>
 
+// memcmp
+int x_mem_cmp(const void *pSrc1, const void *pSrc2, UINT_PTR nBytes);
+
 // memcpy
 void x_mem_cpy(void *pDest, const void *pSrc, UINT_PTR nBytes);
 
