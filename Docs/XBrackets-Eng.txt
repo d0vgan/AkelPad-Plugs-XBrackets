@@ -261,7 +261,7 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
-v.8.1
+v.8.1 (March 2024)
  * Glory to Ukraine! Glory to the heroes!
  + added: gotobr.lines_vis_up, gotobr.lines_vis_down and gotobr.pair_line_diff
  - fixed: no more flickering of highlighted brackets while AkelPad is exiting
@@ -554,7 +554,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Jan 2024, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Mar 2024, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);
