@@ -10,6 +10,8 @@ Set PATH=%VCDIR%\bin;%MSSDK%\bin;%PATH%
 Set INCLUDE=%MSSDK%\include;%VCDIR%\include;%ATLMFC%\include;%INCLUDE%
 Set LIB=%MSSDK%\lib;%VCDIR%\lib;%LIB%
 
+cd "%~dp0."
+if not exist "..\Plugs" mkdir "..\Plugs"
 cd .\XBrackets
 
 rc /r /Fo"XBrackets.res" "XBrackets.rc"
