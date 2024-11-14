@@ -16,8 +16,8 @@ call "%VC_ROOT%\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
 goto Building
 
 :Building
-msbuild XBrackets_vc2017.sln /t:Clean /p:Configuration=Release;Platform=Win32
-msbuild XBrackets_vc2017.sln /t:Build /p:Configuration=Release;Platform=Win32
+msbuild XBrackets_VC2017.sln /t:Clean /p:Configuration=Release;Platform=Win32
+msbuild XBrackets_VC2017.sln /t:Build /p:Configuration=Release;Platform=Win32
 
 if exist .\Release\XBrackets.dll goto CopyDll
 echo.

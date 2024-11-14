@@ -1,0 +1,10 @@
+.git/**
+Source/*.ncb
+Source/*.suo
+Source/*.vcproj.*user
+Source/*.vcxproj.user
+Source/.vs/**
+Source/Debug/**
+Source/Release/**
+Source/x64/**
+XBrackets.dll
