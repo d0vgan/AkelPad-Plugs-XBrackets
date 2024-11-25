@@ -55,5 +55,11 @@ BOOL PluginCallXBracketsMain(HWND hMainWnd, BOOL bOldWindows);
 void Initialize(PLUGINDATA* pd);
 void Uninitialize(BOOL bIsExiting /* = FALSE */);
 
+// debug helper
+#ifdef _DEBUG
+void Debug_OutputA(const char* szFormat, ...);
+void Debug_OutputW(const wchar_t* szFormat, ...);
+#endif
+
 //---------------------------------------------------------------------------
 #endif

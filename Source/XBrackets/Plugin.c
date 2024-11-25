@@ -820,6 +820,9 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           {
             bHLSetTheme = TRUE;
 
+            #ifdef _DEBUG
+              Debug_OutputA("AEM_HLSETTHEME -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+            #endif
             OnEditGetActiveBrackets(hWnd, WM_PAINT, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
           }
         }
@@ -861,6 +864,9 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           if (ei.hWndEdit == hWnd)
           {
+            #ifdef _DEBUG
+              Debug_OutputA("WM_SETFOCUS -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+            #endif
             OnEditGetActiveBrackets(hWnd, WM_SETFOCUS, XBR_GBF_HIGHLIGHTBR);
           }
         }
@@ -935,6 +941,9 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           lResult = pEditProcData->NextProc(hWnd, uMsg, wParam, lParam);
 
         // after the text is changed: updating the highlighting
+        #ifdef _DEBUG
+          Debug_OutputA("uMsg = 0x%X -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", uMsg, hWnd);
+        #endif
         OnEditGetActiveBrackets(hWnd, uMsg, XBR_GBF_HIGHLIGHTBR);
 
         return lResult;
@@ -962,7 +971,12 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
           bHLSetTheme = FALSE;
           uFlags |= XBR_GBF_UPDATEHLDATA;
         }
+
+        #ifdef _DEBUG
+          Debug_OutputA("WM_PAINT, bDocumentJustOpened -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+        #endif
         OnEditGetActiveBrackets(hWnd, WM_PAINT, uFlags);
+        bOpeningNewDocument = FALSE;
         bDocumentJustOpened = FALSE;
         hDocumentJustOpenedWnd = NULL;
       }
@@ -972,6 +986,9 @@ LRESULT CALLBACK NewEditProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         {
           bHLSetTheme = FALSE;
 
+          #ifdef _DEBUG
+            Debug_OutputA("WM_PAINT, bHLSetTheme -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+          #endif
           OnEditGetActiveBrackets(hWnd, WM_PAINT, XBR_GBF_HIGHLIGHTBR | XBR_GBF_UPDATEHLDATA);
         }
         else
@@ -1046,6 +1063,9 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         ei.hWndEdit = NULL;
         if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) NULL, (LPARAM) &ei) != 0)
         {
+          #ifdef _DEBUG
+            Debug_OutputA("AKDN_MAIN_ONSTART_FINISH -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+          #endif
           OnEditGetActiveBrackets(ei.hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
         }
       }
@@ -1061,7 +1081,15 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       // AKDN_EDIT_ONSTART - required to set bOpeningNewDocument before EN_SELCHANGE
       bOpeningNewDocument = TRUE;
+      if (uMsg == AKDN_EDIT_ONSTART && g_nMDI != WMD_SDI)
+      {
+        bDocumentJustOpened = TRUE;
+        hDocumentJustOpenedWnd = (HWND) wParam;
+      }
       RemoveAllHighlightInfo(FALSE);
+      #ifdef _DEBUG
+        Debug_OutputA("%s, bOpeningNewDocument = %d, bDocumentJustOpened = %d\n", uMsg == AKDN_OPENDOCUMENT_START ? "AKDN_OPENDOCUMENT_START" : "AKDN_EDIT_ONSTART", bOpeningNewDocument, bDocumentJustOpened);
+      #endif
     }
     else if ((uMsg == AKDN_OPENDOCUMENT_FINISH) ||
              (uMsg == WM_COMMAND && LOWORD(wParam) == IDM_FILE_NEW))
@@ -1084,6 +1112,9 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hDocumentJustOpenedWnd = ((FRAMEDATA *)wParam)->ei.hWndEdit;
       }
 
+      #ifdef _DEBUG
+        Debug_OutputA("%s, bOpeningNewDocument = %d, bDocumentJustOpened = %d\n", uMsg == AKDN_OPENDOCUMENT_FINISH ? "AKDN_OPENDOCUMENT_FINISH" : "WM_COMMAND, IDM_FILE_NEW", bOpeningNewDocument, bDocumentJustOpened);
+      #endif
       return lResult;
     }
     else if (uMsg == WM_CLOSE)
@@ -1104,6 +1135,9 @@ LRESULT CALLBACK NewMainProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         ei.hWndEdit = NULL;
         if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM)NULL, (LPARAM)&ei) != 0)
         {
+          #ifdef _DEBUG
+            Debug_OutputA("WM_CLOSE -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+          #endif
           OnEditGetActiveBrackets(ei.hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
         }
       }
@@ -1178,12 +1212,18 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (wParam == ID_EDIT)
     {
       NMHDR* pnmhdr = (NMHDR *) lParam;
+      #ifdef _DEBUG
+        Debug_OutputA("WM_NOTIFY: pnmhdr->code = 0x%X, pnmhdr->hwndFrom = 0x%X, g_hFocusedEditWnd = 0x%X, bOpeningNewDocument = %d, bDocumentJustOpened = %d\n", pnmhdr->code, pnmhdr->hwndFrom, g_hFocusedEditWnd, bOpeningNewDocument, bDocumentJustOpened);
+      #endif
       if (pnmhdr->hwndFrom == g_hFocusedEditWnd && nAkelPadIsClosing == 0)
       {
         if (pnmhdr->code == EN_SELCHANGE)
         {
           if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
           {
+            #ifdef _DEBUG
+              Debug_OutputA("WM_NOTIFY -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+            #endif
             OnEditGetActiveBrackets(pnmhdr->hwndFrom, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
           }
         }
@@ -1207,6 +1247,9 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
               // after the text is changed: updating the highlighting
               if (IsBracketsHighlight(uBracketsHighlight) && !bOpeningNewDocument)
               {
+                #ifdef _DEBUG
+                  Debug_OutputA("AEN_TEXTCHANGED -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+                #endif
                 OnEditGetActiveBrackets(pnmhdr->hwndFrom, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
               }
               break;
@@ -1228,6 +1271,9 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   }
   else if (uMsg == AKDN_FRAME_ACTIVATE)
   {
+    #ifdef _DEBUG
+      Debug_OutputA("AKDN_FRAME_ACTIVATE - begin, bOpeningNewDocument = %d, bDocumentJustOpened = %d\n", bOpeningNewDocument, bDocumentJustOpened);
+    #endif
     if (nAkelPadIsClosing != 0 && (wParam & (FWA_NOTIFY_AFTERDESTROY|FWA_NOTIFY_BEFOREDESTROY)) != 0)
     {
       RemoveAllHighlightInfo(FALSE);
@@ -1246,12 +1292,18 @@ void EditParentMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         hActualEditWnd = NULL;
         RemoveAllHighlightInfo(FALSE);
 
+        #ifdef _DEBUG
+          Debug_OutputA("AKDN_FRAME_ACTIVATE -> OnEditGetActiveBrackets: hEditWnd = 0x%X\n", hWnd);
+        #endif
         OnEditGetActiveBrackets(lpFrame->ei.hWndEdit, WM_PAINT, XBR_GBF_HIGHLIGHTBR);
 
         // PMDI mode
         bOpeningNewDocument = FALSE;
       }
     }
+    #ifdef _DEBUG
+      Debug_OutputA("AKDN_FRAME_ACTIVATE - done, bOpeningNewDocument = %d, bDocumentJustOpened = %d\n", bOpeningNewDocument, bDocumentJustOpened);
+    #endif
   }
   //return 0;
 }
@@ -2274,3 +2326,27 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
   }
   return TRUE;
 }
+
+#ifdef _DEBUG
+void Debug_OutputA(const char* szFormat, ...)
+{
+    char szBuf[1024];
+    va_list arg;
+    va_start(arg, szFormat);
+    wvsprintfA(szBuf, szFormat, arg);
+    va_end(arg);
+
+    OutputDebugStringA(szBuf);
+}
+
+void Debug_OutputW(const wchar_t* szFormat, ...)
+{
+    wchar_t szBuf[1024];
+    va_list arg;
+    va_start(arg, szFormat);
+    wvsprintfW(szBuf, szFormat, arg);
+    va_end(arg);
+
+    OutputDebugStringW(szBuf);
+}
+#endif

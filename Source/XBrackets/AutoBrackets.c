@@ -886,6 +886,10 @@ void OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags)
   INT_X       nEditEndPos;
   CHARRANGE_X crSelection;
 
+  #ifdef _DEBUG
+    Debug_OutputA("OnEditGetActiveBrackets: hEditWnd = 0x%X, uMsg = 0x%X, uFlags = 0x%X\n", hEditWnd, uMsg, uFlags);
+  #endif
+
   if (bBracketsInternalRepaint)
     return;
 
