@@ -97,19 +97,22 @@ COLORREF     bracketsColourHighlight[2] = { RGB(0xD0, 0x40, 0x40), RGB(0xFF, 0xF
 COLORREF     g_CustomColoursHighlight[MAX_CUSTOM_COLOURS] = { RGB(0xD0,0x40,0x40), RGB(0x10,0x70,0xC0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 COLORREF     g_CustomColoursHighlight_0[MAX_CUSTOM_COLOURS] = { 0 };
 
-char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
 wchar_t      strHtmlFileExtsW[STR_FILEEXTS_SIZE] = L"htm; xml; php\0";
 wchar_t      strHtmlFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-char         strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE] = "js; pas; py; ps1; sh\0";
 wchar_t      strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE] = L"js; pas; py; ps1; sh\0";
 wchar_t      strSingleQuoteFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
 wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 wchar_t      strEscaped1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-char         strComment1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
 wchar_t      strComment1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 wchar_t      strComment1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
 wchar_t      strPluginFuncMainW[STR_PLUGINFUNC_SIZE] = { 0 };
+
+#ifndef _WIN64
+char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
+char         strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE] = "js; pas; py; ps1; sh\0";
+char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
+char         strComment1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
+#endif
 
 #define      OPT_UNDEFINED_DWORD      0xFEDCBA98
 #define      OPTF_AUTOCOMPLETE        0x000001

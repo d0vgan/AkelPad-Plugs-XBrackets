@@ -38,15 +38,18 @@ extern BOOL        bBracketsSkipEscaped1;
 extern BOOL        bBracketsSkipComment1;
 extern COLORREF    bracketsColourHighlight[2];
 extern COLORREF    g_CustomColoursHighlight[MAX_CUSTOM_COLOURS];
-extern char        strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strHtmlFileExtsW[STR_FILEEXTS_SIZE];
-extern char        strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE];
-extern char        strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
-extern char        strComment1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t     strComment1FileExtsW[STR_FILEEXTS_SIZE];
 extern wchar_t     strPluginFuncMainW[STR_PLUGINFUNC_SIZE];
+
+#ifndef _WIN64
+extern char        strHtmlFileExtsA[STR_FILEEXTS_SIZE];
+extern char        strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
+extern char        strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
+extern char        strComment1FileExtsA[STR_FILEEXTS_SIZE];
+#endif
 
 static HWND        sd_hToolTip = NULL;
 
@@ -226,7 +229,11 @@ INT_PTR CALLBACK SettingsDlgProc(
   return 0;
 }
 
-static void settdlg_WriteOptToStr(HWND hEd, char* strOptStrA, wchar_t* strOptStrW, int nMaxStr)
+static void settdlg_WriteOptToStr(HWND hEd,
+#ifndef _WIN64
+    char* strOptStrA,
+#endif
+    wchar_t* strOptStrW, int nMaxStr)
 {
   if (hEd)
   {
@@ -244,16 +251,28 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
   UINT uState;
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF),
-    strSingleQuoteFileExtsA, strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strSingleQuoteFileExtsA,
+#endif
+      strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
-    strHtmlFileExtsA, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strHtmlFileExtsA,
+#endif
+      strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1),
-    strEscaped1FileExtsA, strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strEscaped1FileExtsA,
+#endif
+      strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
-    strComment1FileExtsA, strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strComment1FileExtsA,
+#endif
+      strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   bBracketsAutoComplete =
     CheckBox_IsChecked(hDlg, IDC_CH_BRACKETS_AUTOCOMPLETE);
@@ -541,7 +560,11 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
   showPluginStatus(hDlg);
 }
 
-static void settdlg_InitOptFromStr(HWND hEd, const char* strOptStrA, const wchar_t* strOptStrW, int nMaxStr)
+static void settdlg_InitOptFromStr(HWND hEd,
+#ifndef _WIN64
+    const char* strOptStrA,
+#endif
+    const wchar_t* strOptStrW, int nMaxStr)
 {
   if (hEd)
   {
@@ -643,16 +666,28 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
   showPluginStatus(hDlg);
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF),
-    strSingleQuoteFileExtsA, strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strSingleQuoteFileExtsA,
+#endif
+      strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
-    strHtmlFileExtsA, strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strHtmlFileExtsA,
+#endif
+      strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1),
-    strEscaped1FileExtsA, strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strEscaped1FileExtsA,
+#endif
+      strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
-    strComment1FileExtsA, strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
+#ifndef _WIN64
+    strComment1FileExtsA,
+#endif
+      strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   sd_hToolTip = SettingsDlg_InitToolTip(hDlg);
 }

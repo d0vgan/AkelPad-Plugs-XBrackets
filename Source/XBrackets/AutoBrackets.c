@@ -191,14 +191,17 @@ extern BOOL     bBracketsHighlightTag;
 extern BOOL     bBracketsSkipEscaped1;
 extern BOOL     bBracketsSkipComment1;
 extern COLORREF bracketsColourHighlight[2];
-extern char     strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strHtmlFileExtsW[STR_FILEEXTS_SIZE];
-extern char     strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE];
-extern char     strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
-extern char     strComment1FileExtsA[STR_FILEEXTS_SIZE];
 extern wchar_t  strComment1FileExtsW[STR_FILEEXTS_SIZE];
+
+#ifndef _WIN64
+extern char     strHtmlFileExtsA[STR_FILEEXTS_SIZE];
+extern char     strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
+extern char     strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
+extern char     strComment1FileExtsA[STR_FILEEXTS_SIZE];
+#endif
 
 extern DWORD    g_dwOptions[OPT_DWORD_COUNT];
 
@@ -5467,7 +5470,11 @@ static int wstr_unsafe_subcmp(const wchar_t* wstr, const wchar_t* wsubstr)
 }
 
 static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
-  wchar_t* szExtListW, char* szExtListA)
+  wchar_t* szExtListW
+#ifndef _WIN64
+    , char* szExtListA
+#endif
+)
 {
   if ( szExtW && szExtW[0] )
   {
@@ -5517,7 +5524,11 @@ static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
 
 static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
 {
-  return wstr_is_listed_ext(szExtW, strComment1FileExtsW, strComment1FileExtsA);
+  return wstr_is_listed_ext(szExtW, strComment1FileExtsW
+#ifndef _WIN64
+            , strComment1FileExtsA
+#endif
+  );
 }
 
 static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
@@ -5534,12 +5545,20 @@ static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
       return TRUE;
   }
   */
-  return wstr_is_listed_ext(szExtW, strEscaped1FileExtsW, strEscaped1FileExtsA);
+  return wstr_is_listed_ext(szExtW, strEscaped1FileExtsW
+#ifndef _WIN64
+            , strEscaped1FileExtsA
+#endif
+  );
 }
 
 static BOOL wstr_is_singlequote_ext(const wchar_t* szExtW)
 {
-  return wstr_is_listed_ext(szExtW, strSingleQuoteFileExtsW, strSingleQuoteFileExtsA);
+  return wstr_is_listed_ext(szExtW, strSingleQuoteFileExtsW
+#ifndef _WIN64
+            , strSingleQuoteFileExtsA
+#endif
+  );
 }
 
 static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
