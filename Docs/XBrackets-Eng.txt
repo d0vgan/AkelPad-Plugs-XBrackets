@@ -261,6 +261,11 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
+v.8.2 (2024)
+ * Glory to Ukraine! Glory to the heroes!
+ - fixed: brackets were not highlighted in a newly created tab in PMDI mode
+ * some internal improvements
+
 v.8.1 (March 2024)
  * Glory to Ukraine! Glory to the heroes!
  + added: gotobr.lines_vis_up, gotobr.lines_vis_down and gotobr.pair_line_diff
