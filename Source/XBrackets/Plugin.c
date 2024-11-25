@@ -137,14 +137,17 @@ DWORD        g_dwOptions[OPT_DWORD_COUNT] = { 0 };
 DWORD        g_dwOptions0[OPT_DWORD_COUNT] = { 0 };
 
 wchar_t      opt_szUserBracketsW[MAX_USER_BRACKETS*4] = { 0x00AB, 0x00BB, L' ', 0x2018, 0x2019, L' ', 0x201C, 0x201D, 0 };
-char         opt_szUserBracketsA[MAX_USER_BRACKETS*4] = { 0xAB, 0xBB, ' ', 0x91, 0x92, ' ', 0x93, 0x94, 0 };
 wchar_t      opt_szUserBracketsW_0[MAX_USER_BRACKETS*4] = { 0 };
 wchar_t      opt_szNextCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L".,!?:;<)]}\"\'>/ \x00BB\x2019\x201D\0";
-char         opt_szNextCharOkA[MAX_PREV_NEXT_CHAR_OK_SIZE] = ".,!?:;<)]}\"\'>/ \xBB\x92\x94\0";
 wchar_t      opt_szNextCharOkW_0[MAX_PREV_NEXT_CHAR_OK_SIZE] = { 0 };
 wchar_t      opt_szPrevCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L"([{<= \x00AB\x2018\x201C\0";
-char         opt_szPrevCharOkA[MAX_PREV_NEXT_CHAR_OK_SIZE] = "([{<= \xAB\x91\x93\0";
 wchar_t      opt_szPrevCharOkW_0[MAX_PREV_NEXT_CHAR_OK_SIZE] = { 0 };
+
+#ifndef _WIN64
+char         opt_szUserBracketsA[MAX_USER_BRACKETS*4] = { 0xAB, 0xBB, ' ', 0x91, 0x92, ' ', 0x93, 0x94, 0 };
+char         opt_szNextCharOkA[MAX_PREV_NEXT_CHAR_OK_SIZE] = ".,!?:;<)]}\"\'>/ \xBB\x92\x94\0";
+char         opt_szPrevCharOkA[MAX_PREV_NEXT_CHAR_OK_SIZE] = "([{<= \xAB\x91\x93\0";
+#endif
 
 extern INT_X   CurrentBracketsIndexes[2];
 extern HWND    hCurrentEditWnd;
@@ -156,6 +159,7 @@ extern TEXTMETRICW  AenPaint_tmW;
 extern TEXTMETRICA  AenPaint_tmA;
 #endif
 
+#ifndef _WIN64
 static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   // dword options
   /* OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR      */  "autocomplete.all_autobr",
@@ -187,6 +191,7 @@ static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   /* OPT_COMMENT1FILEEXTS                   */  "Comment1FileExts",
   /* OPT_XBRACKETS                          */  "XBrackets"
 };
+#endif
 
 static const wchar_t* cszOptNamesW[OPT_TOTAL_COUNT] = {
   // dword options
@@ -272,6 +277,7 @@ static LANGID getAkelPadLang(PLUGINDATA* pd)
 }
 
 // from "StrFunc.h"
+#ifndef _WIN64
 static int xitoaA(INT_PTR nNumber, char *szStr)
 {
   char szReverse[128];
@@ -300,6 +306,7 @@ static int xitoaA(INT_PTR nNumber, char *szStr)
   szStr[b]='\0';
   return b;
 }
+#endif
 
 // from "StrFunc.h"
 static int xitoaW(INT_PTR nNumber, wchar_t *wszStr)
@@ -1470,6 +1477,7 @@ void Uninitialize(BOOL bIsExiting )
   }
 }
 
+#ifndef _WIN64
 static const char* getOldOptionNameA(const char* pszNameA)
 {
   while ( (*pszNameA) && (*pszNameA != '.') )
@@ -1480,6 +1488,7 @@ static const char* getOldOptionNameA(const char* pszNameA)
     ++pszNameA;
   return pszNameA;
 }
+#endif
 
 static const wchar_t* getOldOptionNameW(const wchar_t* pszNameW)
 {
@@ -1492,6 +1501,7 @@ static const wchar_t* getOldOptionNameW(const wchar_t* pszNameW)
   return pszNameW;
 }
 
+#ifndef _WIN64
 static BOOL readOptionA(HANDLE hOptions, const char* pszOptionNameA,
                  void* pData, DWORD dwDataSize, DWORD dwOptionType)
 {
@@ -1517,6 +1527,7 @@ static BOOL readOptionA(HANDLE hOptions, const char* pszOptionNameA,
   }
   return (dwSize > 0);
 }
+#endif
 
 static BOOL readOptionW(HANDLE hOptions, const wchar_t* pszOptionNameW,
                  void* pData, DWORD dwDataSize, DWORD dwOptionType)
@@ -1544,30 +1555,36 @@ static BOOL readOptionW(HANDLE hOptions, const wchar_t* pszOptionNameW,
   return (dwSize > 0);
 }
 
+#ifndef _WIN64
 static BOOL readOptionBinaryA(HANDLE hOptions, const char* pszOptionNameA, void* pBuf, DWORD dwBufSize)
 {
   return readOptionA(hOptions, pszOptionNameA, pBuf, dwBufSize, PO_BINARY);
 }
+#endif
 
 static BOOL readOptionBinaryW(HANDLE hOptions, const wchar_t* pszOptionNameW, void* pBuf, DWORD dwBufSize)
 {
   return readOptionW(hOptions, pszOptionNameW, pBuf, dwBufSize, PO_BINARY);
 }
 
+#ifndef _WIN64
 static BOOL readOptionDwordA(HANDLE hOptions, const char* pszOptionNameA, DWORD* pdwValue)
 {
   return readOptionA(hOptions, pszOptionNameA, pdwValue, sizeof(DWORD), PO_DWORD);
 }
+#endif
 
 static BOOL readOptionDwordW(HANDLE hOptions, const wchar_t* pszOptionNameW, DWORD* pdwValue)
 {
   return readOptionW(hOptions, pszOptionNameW, pdwValue, sizeof(DWORD), PO_DWORD);
 }
 
+#ifndef _WIN64
 static BOOL readOptionStrA(HANDLE hOptions, const char* pszOptionNameA, char* pszStrA, DWORD dwStrSize)
 {
   return readOptionA(hOptions, pszOptionNameA, pszStrA, dwStrSize*sizeof(char), PO_STRING);
 }
+#endif
 
 static BOOL readOptionStrW(HANDLE hOptions, const wchar_t* pszOptionNameW, wchar_t* pszStrW, DWORD dwStrSize)
 {

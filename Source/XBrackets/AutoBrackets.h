@@ -87,11 +87,13 @@ void  AutoBrackets_Uninitialize(void);
 
 void  setNextCharOkW(const wchar_t* cszNextCharOkW);
 void  setPrevCharOkW(const wchar_t* cszPrevCharOkW);
-void  setUserBracketsA(const char* cszUserBracketsA);
 void  setUserBracketsW(const wchar_t* cszUserBracketsW);
-
-const char*    getCurrentBracketsPairA(void);
 const wchar_t* getCurrentBracketsPairW(void);
+
+#ifndef _WIN64
+void  setUserBracketsA(const char* cszUserBracketsA);
+const char* getCurrentBracketsPairA(void);
+#endif
 
 BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel); // CHARRANGE_X* crSel
 

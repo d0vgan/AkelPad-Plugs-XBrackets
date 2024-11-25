@@ -76,6 +76,7 @@ enum TBracketType {
   tbtUser
 };
 
+#ifndef _WIN64
 static const char* strBracketsA[tbtCount - 1] = {
   "()",
   "[]",
@@ -86,6 +87,7 @@ static const char* strBracketsA[tbtCount - 1] = {
   "</>",
   "><"
 };
+#endif
 
 static const WCHAR* strBracketsW[tbtCount - 1] = {
   L"()",
@@ -201,7 +203,9 @@ extern wchar_t  strComment1FileExtsW[STR_FILEEXTS_SIZE];
 extern DWORD    g_dwOptions[OPT_DWORD_COUNT];
 
 wchar_t         strUserBracketsW[MAX_USER_BRACKETS + 1][4];
+#ifndef _WIN64
 char            strUserBracketsA[MAX_USER_BRACKETS + 1][4];
+#endif
 wchar_t         strNextCharOkW__[MAX_PREV_NEXT_CHAR_OK_SIZE];
 wchar_t         strPrevCharOkW__[MAX_PREV_NEXT_CHAR_OK_SIZE];
 tStringWrapperW nextCharOkW = { strNextCharOkW__, MAX_PREV_NEXT_CHAR_OK_SIZE, 0 };
@@ -463,9 +467,7 @@ static BOOL OccurrencesData_Decrement(tOccurrencesData* ocd, int nType)
 static WCHAR char2wchar(const char ch);
 static void  getEscapedPrefixPos(const INT_X nOffset, INT_X* pnPos, INT* pnLen);
 static BOOL  isEscapedPrefixW(const wchar_t* strW, int len);
-static BOOL  isEscapedPrefixA(const char* strA, int len);
 static BOOL  isEscapedPosW(const INT_X nOffset);
-static BOOL  isEscapedPosA(const INT_X nOffset);
 static BOOL  isEscapedPosEx(const INT_X nOffset);
 static BOOL  isEscapedCharacterW(const INT_X pos, const wchar_t* pcwszLine);
 static void  remove_duplicate_indexes_and_sort(INT_X* indexes, const INT size /* = HIGHLIGHT_INDEXES */);
@@ -475,6 +477,11 @@ static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlight
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
 static BOOL  IsClearTypeEnabled(void);
 static void  CopyMemory1(void* dst, const void* src, unsigned int size);
+
+#ifndef _WIN64
+static BOOL  isEscapedPrefixA(const char* strA, int len);
+static BOOL  isEscapedPosA(const INT_X nOffset);
+#endif
 
 enum eHighlightFlags {
   HF_DOHIGHLIGHT = 0x01,
@@ -512,6 +519,7 @@ static const wchar_t* getBracketsPairW(int nBracketType)
   return strUserBracketsW[nBracketType - tbtUser];
 }
 
+#ifndef _WIN64
 static const char* getBracketsPairA(int nBracketType)
 {
   if ( nBracketType < tbtUser )
@@ -519,6 +527,7 @@ static const char* getBracketsPairA(int nBracketType)
 
   return strUserBracketsA[nBracketType - tbtUser];
 }
+#endif
 
 static BOOL isDuplicatedPair(int nBracketType)
 {
@@ -1103,6 +1112,7 @@ static BOOL IsEnclosedInBracketsW(const wchar_t* pszTextLeftW, const wchar_t* ps
   return bRet;
 }
 
+#ifndef _WIN64
 static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextRightA, int* pnBracketType, BOOL bInSelection)
 {
   const char* pszBrPairA;
@@ -1150,6 +1160,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
 
   return bRet;
 }
+#endif
 
 /*static*/ BOOL AutoBracketsFunc(MSGINFO* pmsgi, int nBracketType, BOOL bOverwriteMode)
 {
@@ -5296,6 +5307,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   return (k % 2) ? TRUE : FALSE;
 }
 
+#ifndef _WIN64
 /*static*/ BOOL isEscapedPrefixA(const char* strA, int len)
 {
   int k = 0;
@@ -5305,6 +5317,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   }
   return (k % 2) ? TRUE : FALSE;
 }
+#endif
 
 /*static*/ BOOL isEscapedPosW(const INT_X nOffset)
 {
@@ -5317,6 +5330,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   return isEscapedPrefixW(szPrefixW, len);
 }
 
+#ifndef _WIN64
 /*static*/ BOOL isEscapedPosA(const INT_X nOffset)
 {
   INT_X pos;
@@ -5327,6 +5341,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   len = (int) AnyRichEdit_GetTextAt(hActualEditWnd, pos, len, szPrefixA);
   return isEscapedPrefixA(szPrefixA, len);
 }
+#endif
 
 /*static*/ BOOL isEscapedPosEx(const INT_X nOffset)
 {
@@ -5393,6 +5408,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   }
 }
 
+#ifndef _WIN64
 static const char* getFileExtA(const char* cszFileNameA)
 {
   if (cszFileNameA)
@@ -5409,6 +5425,7 @@ static const char* getFileExtA(const char* cszFileNameA)
   }
   return NULL;
 }
+#endif
 
 static const wchar_t* getFileExtW(const wchar_t* cszFileNameW)
 {
@@ -5763,6 +5780,7 @@ void setPrevCharOkW(const wchar_t* cszPrevCharOkW)
   copyUniqueCharsOkW(&prevCharOkW, cszPrevCharOkW);
 }
 
+#ifndef _WIN64
 void setUserBracketsA(const char* cszUserBracketsA)
 {
   strUserBracketsA[0][0] = 0;
@@ -5820,6 +5838,7 @@ void setUserBracketsA(const char* cszUserBracketsA)
     }
   }
 }
+#endif
 
 void setUserBracketsW(const wchar_t* cszUserBracketsW)
 {
@@ -5879,6 +5898,7 @@ void setUserBracketsW(const wchar_t* cszUserBracketsW)
   }
 }
 
+#ifndef _WIN64
 const char* getCurrentBracketsPairA(void)
 {
   static char szBracketsPair[4];
@@ -5911,6 +5931,7 @@ const char* getCurrentBracketsPairA(void)
 
   return szBracketsPair;
 }
+#endif
 
 const wchar_t* getCurrentBracketsPairW(void)
 {

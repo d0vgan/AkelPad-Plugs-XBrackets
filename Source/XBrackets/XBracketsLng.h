@@ -10,9 +10,12 @@
 
 // lng funcs
 void xbrSetSettingsDlgLang(HWND hDlg, LANGID sysLangId);
-const char* xbrGetStrA(unsigned int strId, LANGID sysLangId);
 const wchar_t* xbrGetStrW(unsigned int strId, LANGID sysLangId);
 void xbrSetAutocompleteWindowText(HWND hDlg, LANGID sysLangId);
+
+#ifndef _WIN64
+const char* xbrGetStrA(unsigned int strId, LANGID sysLangId);
+#endif
 
 //---------------------------------------------------------------------------
 #endif

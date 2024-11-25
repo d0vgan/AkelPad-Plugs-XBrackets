@@ -690,6 +690,7 @@ void SettingsDlg_UpdateStateOfChBrackets(HWND hDlg, BOOL bInvert)
     BM_SETCHECK, uState, 0);
 }
 
+#ifndef _WIN64
 static void fillToolInfoA(
   TOOLINFOA* lptiA,
   LPSTR      lpToolTipText,
@@ -713,6 +714,7 @@ static void fillToolInfoA(
     lptiA->rect.bottom = rect.bottom;
     lptiA->lParam = 0;
 }
+#endif
 
 static void fillToolInfoW(
   TOOLINFOW* lptiW,
