@@ -4,6 +4,12 @@
 #include "XMemStrFunc.h"
 
 
+#ifdef _WIN64
+#undef SendMessage
+#define SendMessage SendMessageW
+#endif
+
+
 // ClearType definitions... >>>
 #ifndef SPI_GETCLEARTYPE
   #define SPI_GETCLEARTYPE 0x1048
@@ -531,8 +537,11 @@ static BOOL isDuplicatedPair(int nBracketType)
 
 static wchar_t getCharAt(HWND hEd, INT_X nPos)
 {
-  return (g_bOldWindows ?
+  return (
+#ifndef _WIN64
+          g_bOldWindows ?
             char2wchar(AnyRichEdit_GetCharAt(hEd, nPos)) :
+#endif
               AnyRichEdit_GetCharAtW(hEd, nPos));
 }
 
@@ -768,12 +777,14 @@ void OnEditCharPressed(MSGINFO* pmsgi)
   }
 
   // verifying if a typed character is a bracket
+#ifndef _WIN64
   if (g_bOldWindows)
   {
     char ch = (char) pmsgi->wParam;
     wch = char2wchar(ch);
   }
   else
+#endif
   {
     wch = (WCHAR) pmsgi->wParam;
   }
@@ -791,9 +802,11 @@ void OnEditCharPressed(MSGINFO* pmsgi)
     INT_X nEditPos;
     INT_X nEditEndPos;
 
+#ifndef _WIN64
     if (g_bOldWindows)
       AnyRichEdit_ExGetSelPos(pmsgi->hWnd, &nEditPos, &nEditEndPos);
     else
+#endif
       AnyRichEdit_ExGetSelPosW(pmsgi->hWnd, &nEditPos, &nEditEndPos);
 
     if (nEditPos == nAutoRightBracketPos)
@@ -809,9 +822,11 @@ void OnEditCharPressed(MSGINFO* pmsgi)
           ++nEditPos;
           if (nAutoRightBracketType == tbtTag2)
             ++nEditPos;
+#ifndef _WIN64
           if (g_bOldWindows)
             AnyRichEdit_ExSetSelPos(pmsgi->hWnd, nEditPos, nEditPos);
           else
+#endif
             AnyRichEdit_ExSetSelPosW(pmsgi->hWnd, nEditPos, nEditPos);
           nAutoRightBracketPos = -1;
           nAutoRightBracketType = tbtNone;
@@ -905,9 +920,11 @@ void OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags)
   updateActualState(hEditWnd);
 
   // getting current position and selection
+#ifndef _WIN64
   if (g_bOldWindows)
     AnyRichEdit_ExGetSelPos(hActualEditWnd, &nEditPos, &nEditEndPos);
   else
+#endif
     AnyRichEdit_ExGetSelPosW(hActualEditWnd, &nEditPos, &nEditEndPos);
 
   if (uMsg == WM_LBUTTONUP)
@@ -1160,9 +1177,11 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
   }
 
   // getting current position and selection
+#ifndef _WIN64
   if (g_bOldWindows)
     AnyRichEdit_ExGetSelPos(hActualEditWnd, &nEditPos, &nEditEndPos);
   else
+#endif
     AnyRichEdit_ExGetSelPosW(hActualEditWnd, &nEditPos, &nEditEndPos);
 
   // is something selected?
@@ -1171,9 +1190,11 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 0)
     {
       // removing selection
+#ifndef _WIN64
       if (g_bOldWindows)
         AnyRichEdit_ReplaceSelText(hActualEditWnd, "", TRUE);
       else
+#endif
         AnyRichEdit_ReplaceSelTextW(hActualEditWnd, L"", TRUE);
     }
     else
@@ -1184,6 +1205,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
           nBracketType = tbtTag2;
       }
 
+#ifndef _WIN64
       if (g_bOldWindows)
       {
         INT_X       nSelLen;
@@ -1292,6 +1314,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
         }
       }
       else
+#endif
       {
         INT_X          nSelLen;
         const wchar_t* pBrPairW;
@@ -1493,6 +1516,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
 
     getEscapedPrefixPos(nEditPos, &pos, &len);
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       char szPrefixA[MAX_ESCAPED_PREFIX + 2];
@@ -1501,6 +1525,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
       MultiByteToWideChar(CP_ACP, 0, szPrefixA, -1, szPrefixW, MAX_ESCAPED_PREFIX + 1);
     }
     else
+#endif
     {
       len = (int) AnyRichEdit_GetTextAtW(hActualEditWnd, pos, len, szPrefixW);
     }
@@ -1531,9 +1556,11 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
       {
         INT_X nLineIndex;
 
+#ifndef _WIN64
         if (g_bOldWindows)
           nLineIndex = AnyRichEdit_LineIndex(hActualEditWnd, ci.nLine);
         else
+#endif
           nLineIndex = AnyRichEdit_LineIndexW(hActualEditWnd, ci.nLine);
 
         nEditPos = nLineIndex + ci.nCharInLine;
@@ -1549,6 +1576,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
         int     i;
         wchar_t wsz[8];
 
+#ifndef _WIN64
         if (g_bOldWindows)
         {
           nLen = lstrlenA(getBracketsPairA(nBracketType));
@@ -1568,6 +1596,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
           AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditPos + nLen);
         }
         else
+#endif
         {
           nLen = lstrlenW(getBracketsPairW(nBracketType));
           wsz[0] = 0;
@@ -1589,16 +1618,20 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     }
 
     // inserting brackets
+#ifndef _WIN64
     if (g_bOldWindows)
       AnyRichEdit_ReplaceSelText(hActualEditWnd, getBracketsPairA(nBracketType), TRUE);
     else
+#endif
       AnyRichEdit_ReplaceSelTextW(hActualEditWnd, getBracketsPairW(nBracketType), TRUE);
 
     // placing cursor between brackets
     nEditPos++;
+#ifndef _WIN64
     if (g_bOldWindows)
       AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditPos);
     else
+#endif
       AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos, nEditPos);
 
     nAutoRightBracketPos = nEditPos;
@@ -2743,6 +2776,7 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
       nLen = 2; // { prev_wch, current_wch }
   }
 
+#ifndef _WIN64
   if ( g_bOldWindows )
   {
     char ch[4] = { 0, 0, 0, 0 };
@@ -2751,6 +2785,7 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
     wch[1] = char2wchar(ch[1]);
   }
   else
+#endif
   {
     AnyRichEdit_GetTextAtW(hActualEditWnd, nPos, nLen, nCharacterPosition == 0 ? wch + 1 : wch);
   }
@@ -2942,16 +2977,20 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
     if ( g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] != 0 )
     {
       int nLine;
+#ifndef _WIN64
       if ( g_bOldWindows )
         nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, nStartPos);
       else
+#endif
         nLine = AnyRichEdit_ExLineFromCharW(hActualEditWnd, nStartPos);
       if ( ((DWORD) nLine) > (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1) )
       {
         nLine -= (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1);
+#ifndef _WIN64
         if ( g_bOldWindows )
           nStopPos = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
         else
+#endif
           nStopPos = AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
       }
     }
@@ -2973,9 +3012,11 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
     nBrPos = nStartPos - 1;
     if ( g_bAkelEdit )
     {
+#ifndef _WIN64
       if ( g_bOldWindows )
         SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
       else
+#endif
         SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
     }
     for ( ; nBrPos >= nStopPos && !bBreak; --nBrPos )
@@ -3002,9 +3043,11 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
           AEC_IndexDec(&aeci);
 
         #if NEARBR_CHARINDEX_LOOP_VERIFY
+#ifndef _WIN64
           if ( g_bOldWindows )
             wch0 = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
           else
+#endif
             wch0 = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
           if (wch0 != wch)
           {
@@ -3025,9 +3068,11 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
       }
       else
       {
+#ifndef _WIN64
         if ( g_bOldWindows )
           wch = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
         else
+#endif
           wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
       }
       nBrType = getLeftBracketTypeEx(wch, BTF_HIGHLIGHT | BTF_CHECK_TAGINV);
@@ -3053,9 +3098,11 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
                 }
                 else if ( g_bAkelEdit )
                 {
+#ifndef _WIN64
                   if ( g_bOldWindows )
                     SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
                   else
+#endif
                     SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
                 }
                 continue;
@@ -3213,12 +3260,14 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
     if ( g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] != 0 )
     {
       int nLine1, nLine2;
+#ifndef _WIN64
       if ( g_bOldWindows )
       {
         nLine1 = AnyRichEdit_ExLineFromChar(hActualEditWnd, nStartPos);
         nLine2 = AnyRichEdit_ExLineFromChar(hActualEditWnd, state->nTextLength);
       }
       else
+#endif
       {
         nLine1 = AnyRichEdit_ExLineFromCharW(hActualEditWnd, nStartPos);
         nLine2 = AnyRichEdit_ExLineFromCharW(hActualEditWnd, state->nTextLength);
@@ -3227,9 +3276,11 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
       {
         nLine2 = nLine1 + g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES]; // - 1 + 1
         // to the end of nLine2 (= to the beginning of the next line)
+#ifndef _WIN64
         if ( g_bOldWindows )
           nStopPos = AnyRichEdit_LineIndex(hActualEditWnd, nLine2);
         else
+#endif
           nStopPos = AnyRichEdit_LineIndexW(hActualEditWnd, nLine2);
       }
     }
@@ -3250,9 +3301,11 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
     nBrPos = nStartPos;
     if ( g_bAkelEdit )
     {
+#ifndef _WIN64
       if ( g_bOldWindows )
         SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
       else
+#endif
         SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
     }
     for ( ; nBrPos < nStopPos; ++nBrPos )
@@ -3282,9 +3335,11 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
           AEC_IndexInc(&aeci);
 
         #if NEARBR_CHARINDEX_LOOP_VERIFY
+#ifndef _WIN64
           if ( g_bOldWindows )
             wch0 = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
           else
+#endif
             wch0 = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
           if (wch0 != wch)
           {
@@ -3305,9 +3360,11 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
       }
       else
       {
+#ifndef _WIN64
         if ( g_bOldWindows )
           wch = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
         else
+#endif
           wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
       }
       nBrType = getRightBracketTypeEx(wch, BTF_HIGHLIGHT | BTF_CHECK_TAGINV);
@@ -3329,9 +3386,11 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
                 nBrPos = c.pos2;  //  ...|"
                 if ( g_bAkelEdit )
                 {
+#ifndef _WIN64
                   if ( g_bOldWindows )
                     SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
                   else
+#endif
                     SendMessageW(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
                 }
                 continue;
@@ -3977,6 +4036,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
 
     getEscapedPrefixPos(nCharacterPosition, &pos, &len);
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       char szPrefixA[MAX_ESCAPED_PREFIX + 2];
@@ -3985,6 +4045,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
       MultiByteToWideChar(CP_ACP, 0, szPrefixA, -1, szPrefixW, MAX_ESCAPED_PREFIX + 1);
     }
     else
+#endif
     {
       len = (int) AnyRichEdit_GetTextAtW(hActualEditWnd, pos, len, szPrefixW);
     }
@@ -4025,6 +4086,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
       wchFail = 0;
     nFailReferences = 0;
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, nCharacterPosition);
@@ -4034,6 +4096,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         AnyRichEdit_FirstVisibleLine(hActualEditWnd) : 0);
     }
     else
+#endif
     {
       nLine = AnyRichEdit_ExLineFromCharW(hActualEditWnd, nCharacterPosition);
       nMaxLine[0] = (bBracketsHighlightVisibleArea ?
@@ -4108,6 +4171,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
       else
       {
         pcwszLine = wszLine;
+#ifndef _WIN64
         if (g_bOldWindows)
         {
           nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, i);
@@ -4118,6 +4182,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
           wszLine[nLen] = 0;
         }
         else
+#endif
         {
           nLine = AnyRichEdit_ExLineFromCharW(hActualEditWnd, i);
           i -= AnyRichEdit_LineIndexW(hActualEditWnd, nLine); // pos in line
@@ -4169,6 +4234,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         }
         else
         {
+#ifndef _WIN64
           if (g_bOldWindows)
           {
             nLen = AnyRichEdit_GetLine(hActualEditWnd, nLine, szLine, 0x10000-1);
@@ -4177,6 +4243,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
             wszLine[nLen] = 0;
           }
           else
+#endif
           {
             nLen = AnyRichEdit_GetLineW(hActualEditWnd, nLine, wszLine, 0x10000-1);
             // AnyRichEdit_GetLineW sets szLineW[nLen] = 0
@@ -4214,9 +4281,11 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         {
           INT_X nLinePosition;
 
+#ifndef _WIN64
           if (g_bOldWindows)
             nLinePosition = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
           else
+#endif
             nLinePosition = AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
 
           nLinePosition = nCharacterPosition - nLinePosition;
@@ -4284,9 +4353,11 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
             break;
           }
 
+#ifndef _WIN64
           if (g_bOldWindows)
             pos1 = i + AnyRichEdit_LineIndex(hActualEditWnd, nLine);
           else
+#endif
             pos1 = i + AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
 
           // Here is how it works:
@@ -4508,11 +4579,13 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         }
       }
 
+#ifndef _WIN64
       if (g_bOldWindows)
       {
         i += AnyRichEdit_LineIndex(hActualEditWnd, nLine);
       }
       else
+#endif
       {
         i += AnyRichEdit_LineIndexW(hActualEditWnd, nLine);
       }
@@ -4623,18 +4696,22 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
     // RichEdit 2.0
     LRESULT coord;
 
+#ifndef _WIN64
     if (g_bOldWindows)
       coord = SendMessageA(hEd, EM_POSFROMCHAR, (WPARAM) nCharacterPosition, 0);
     else
+#endif
       coord = SendMessageW(hEd, EM_POSFROMCHAR, (WPARAM) nCharacterPosition, 0);
     lpPos->x = LOWORD(coord);
     lpPos->y = HIWORD(coord);
   }
   else
   {
+#ifndef _WIN64
     if (g_bOldWindows)
       SendMessageA(hEd, EM_POSFROMCHAR, (WPARAM) lpPos, (LPARAM) nCharacterPosition);
     else
+#endif
       SendMessageW(hEd, EM_POSFROMCHAR, (WPARAM) lpPos, (LPARAM) nCharacterPosition);
   }
 }
@@ -4708,6 +4785,7 @@ BOOL IsClearTypeEnabled(void)
   bFontSmoothing = FALSE;
   nFontSmoothingType = 0;
 
+#ifndef _WIN64
   if (g_bOldWindows)
   {
     SystemParametersInfoA(SPI_GETFONTSMOOTHING, 0, &bFontSmoothing, 0);
@@ -4717,6 +4795,7 @@ BOOL IsClearTypeEnabled(void)
     }
   }
   else
+#endif
   {
     SystemParametersInfoW(SPI_GETFONTSMOOTHING, 0, &bFontSmoothing, 0);
     if (bFontSmoothing)
@@ -4759,6 +4838,7 @@ BOOL IsClearTypeEnabled(void)
   }
   // contents of *pchd and chd are equal now
 
+#ifndef _WIN64
   if (g_bOldWindows)
   {
     if ((nCharacterPosition < AnyRichEdit_FirstVisibleCharIndex(hActualEditWnd)) ||
@@ -4768,6 +4848,7 @@ BOOL IsClearTypeEnabled(void)
     }
   }
   else
+#endif
   {
     if ((nCharacterPosition < AnyRichEdit_FirstVisibleCharIndexW(hActualEditWnd)) ||
         (nCharacterPosition > AnyRichEdit_LastVisibleCharIndexW(hActualEditWnd)))
@@ -4841,11 +4922,15 @@ BOOL IsClearTypeEnabled(void)
       HFONT        hFont, hFontOld;
       RECT         rect;
       COLORREF     textColor, bkColor;
+#ifndef _WIN64
       LOGFONTA     lfA;
+#endif
       LOGFONTW     lfW;
       //INT         sel1, sel2;
       int          nBkModePrev;
+#ifndef _WIN64
       char         strA[2];
+#endif
       wchar_t      strW[2];
 
       bBracketsInternalRepaint = TRUE;
@@ -4854,6 +4939,7 @@ BOOL IsClearTypeEnabled(void)
       HideCaret(hActualEditWnd);
 
       // at first we select a font...
+#ifndef _WIN64
       if (g_bOldWindows)
       {
         HFONT hf;
@@ -4868,6 +4954,7 @@ BOOL IsClearTypeEnabled(void)
         hFont = CreateFontIndirectA(&lfA);
       }
       else
+#endif
       {
         HFONT hf;
 
@@ -4883,6 +4970,7 @@ BOOL IsClearTypeEnabled(void)
       hFontOld = (HFONT) SelectObject(hDC, hFont);
 
       // ...then we call GetTextMetrics for this font...
+#ifndef _WIN64
       if (g_bOldWindows)
       {
         TEXTMETRICA tmA;
@@ -4891,6 +4979,7 @@ BOOL IsClearTypeEnabled(void)
         ptEnd.y = ptBegin.y + tmA.tmHeight;
       }
       else
+#endif
       {
         TEXTMETRICW tmW;
 
@@ -4960,6 +5049,7 @@ BOOL IsClearTypeEnabled(void)
       rect.top    = ptBegin.y;
       rect.right  = ptEnd.x;
       rect.bottom = ptEnd.y;
+#ifndef _WIN64
       if (g_bOldWindows)
       {
         if (uHighlightFlags & HF_DOHIGHLIGHT)
@@ -5033,6 +5123,7 @@ BOOL IsClearTypeEnabled(void)
         }
       }
       else
+#endif
       {
         if (uHighlightFlags & HF_DOHIGHLIGHT)
         {
@@ -5241,7 +5332,12 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 {
   if ( bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) )
   {
-    return (g_bOldWindows ? isEscapedPosA(nOffset) : isEscapedPosW(nOffset));
+    return (
+#ifndef _WIN64
+            g_bOldWindows ?
+              isEscapedPosA(nOffset) :
+#endif
+                isEscapedPosW(nOffset));
   }
   return FALSE;
 }
@@ -5361,6 +5457,7 @@ static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
     int      len, i, n;
     wchar_t  szW[MAX_EXT];
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       len = lstrlenA(szExtListA);
@@ -5369,6 +5466,7 @@ static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
       szExtListW[len] = 0;
     }
     else
+#endif
     {
       len = lstrlenW(szExtListW);
     }
@@ -5434,6 +5532,7 @@ static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
     int      len, i, n;
     wchar_t  szW[MAX_EXT];
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       len = lstrlenA(strHtmlFileExtsA);
@@ -5442,6 +5541,7 @@ static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
       strHtmlFileExtsW[len] = 0;
     }
     else
+#endif
     {
       len = lstrlenW(strHtmlFileExtsW);
     }
@@ -5489,6 +5589,7 @@ int getFileType(int* pnCurrentFileType2)
 
   if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) hActualEditWnd, (LPARAM) &ei) != 0)
   {
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       p = getFileExtA( (const char*) ei.pFile ); // file extension ptr (char *)
@@ -5508,6 +5609,7 @@ int getFileType(int* pnCurrentFileType2)
       }
     }
     else
+#endif
     {
       p = getFileExtW( (const wchar_t*) ei.pFile ); // file extension ptr (wchar_t *)
       if (p)

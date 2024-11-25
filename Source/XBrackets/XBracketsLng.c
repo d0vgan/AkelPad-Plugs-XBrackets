@@ -191,6 +191,7 @@ void xbrSetSettingsDlgLang(HWND hDlg, LANGID sysLangId)
 {
     sysLangId = PRIMARYLANGID(sysLangId);
 
+#ifndef _WIN64
     if ( g_bOldWindows )
     {
         const tDlgItemLngA* pDIL = xbrGetDlgItemLngA(sysLangId);
@@ -208,6 +209,7 @@ void xbrSetSettingsDlgLang(HWND hDlg, LANGID sysLangId)
         }
     }
     else
+#endif
     {
         const tDlgItemLngW* pDIL = xbrGetDlgItemLngW(sysLangId);
         while ( pDIL->id != 0 )
@@ -237,6 +239,7 @@ void xbrSetAutocompleteWindowText(HWND hDlg, LANGID sysLangId)
 
     sysLangId = PRIMARYLANGID(sysLangId);
 
+#ifndef _WIN64
     if ( g_bOldWindows )
     {
         const tDlgItemLngA* pDIL;
@@ -300,6 +303,7 @@ void xbrSetAutocompleteWindowText(HWND hDlg, LANGID sysLangId)
         SetWindowTextA( GetDlgItem(hDlg, IDC_CH_BRACKETS_AUTOCOMPLETE), szFullText );
     }
     else
+#endif
     {
         const tDlgItemLngW* pDIL;
         const WCHAR* pcszText;

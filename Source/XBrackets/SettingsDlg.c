@@ -8,6 +8,13 @@
 #include <commctrl.h>
 #include <commdlg.h>
 
+
+#ifdef _WIN64
+#undef SendMessage
+#define SendMessage SendMessageW
+#endif
+
+
 extern HWND        g_hMainWnd;
 extern HINSTANCE   g_hInstanceDLL;
 extern BOOL        g_bOldWindows;
@@ -223,9 +230,11 @@ static void settdlg_WriteOptToStr(HWND hEd, char* strOptStrA, wchar_t* strOptStr
 {
   if (hEd)
   {
+#ifndef _WIN64
     if (g_bOldWindows)
       GetWindowTextA(hEd, strOptStrA, nMaxStr);
     else
+#endif
       GetWindowTextW(hEd, strOptStrW, nMaxStr);
   }
 }
@@ -315,6 +324,7 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
   {
     i = 0;
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       CHOOSECOLORA ccA;
@@ -334,6 +344,7 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
       }
     }
     else
+#endif
     {
       CHOOSECOLORW ccW;
 
@@ -464,6 +475,7 @@ void SettingsDlg_OnDrawItem(HWND hDlg, UINT uControlID, DRAWITEMSTRUCT* pDis)
 
 static void showPluginStatus(HWND hDlg)
 {
+#ifndef _WIN64
   if (g_bOldWindows)
   {
     DlgItem_SetText(hDlg, IDC_ST_PLUGINSTATE, FALSE,
@@ -471,6 +483,7 @@ static void showPluginStatus(HWND hDlg)
         xbrGetStrA(XBR_STR_PLUGINSTATUSNOTACTIVE, g_LangSystem) );
   }
   else
+#endif
   {
     DlgItem_SetText(hDlg, IDC_ST_PLUGINSTATE, TRUE,
       g_bInitialized ? xbrGetStrW(XBR_STR_PLUGINSTATUSACTIVE, g_LangSystem) :
@@ -488,6 +501,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
     bDoInitializeHere = FALSE;
   }
 
+#ifndef _WIN64
   if (g_bOldWindows)
   {
     if (bDoInitializeHere)
@@ -506,6 +520,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
     }
   }
   else
+#endif
   {
     if (bDoInitializeHere)
     {
@@ -532,9 +547,11 @@ static void settdlg_InitOptFromStr(HWND hEd, const char* strOptStrA, const wchar
   {
     SendMessage(hEd, EM_LIMITTEXT, (WPARAM) nMaxStr, 0);
 
+#ifndef _WIN64
     if (g_bOldWindows)
       SetWindowTextA(hEd, strOptStrA);
     else
+#endif
       SetWindowTextW(hEd, strOptStrW);
   }
 }
@@ -731,6 +748,7 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
   iccex.dwSize = sizeof(INITCOMMONCONTROLSEX);
   InitCommonControlsEx(&iccex);
 
+#ifndef _WIN64
   if (g_bOldWindows)
   {
     hToolTip = CreateWindowExA(WS_EX_TOPMOST, TOOLTIPS_CLASSA,
@@ -739,6 +757,7 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
       hDlg, 0, g_hInstanceDLL, 0);
   }
   else
+#endif
   {
     hToolTip = CreateWindowExW(WS_EX_TOPMOST, TOOLTIPS_CLASSW,
       0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
@@ -752,6 +771,7 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
     SetWindowPos(hToolTip, HWND_TOPMOST,
       0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
+#ifndef _WIN64
     if (g_bOldWindows)
     {
       TOOLINFOA tiA;
@@ -770,6 +790,7 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
       SendMessage( hToolTip, TTM_ADDTOOLA, 0, (LPARAM) &tiA );
     }
     else
+#endif
     {
       TOOLINFOW tiW;
       const WCHAR* cszHintTextW = xbrGetStrW(XBR_STR_HINTAUTOCOMPLHGLT, g_LangSystem);

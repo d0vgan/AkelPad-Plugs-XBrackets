@@ -264,6 +264,7 @@ History:
 v.8.2 (2024)
  * Glory to Ukraine! Glory to the heroes!
  - fixed: brackets were not highlighted in a newly created tab in PMDI mode
+ * the size of the 64-bit XBrackets.dll has been reduced
  * some internal improvements
 
 v.8.1 (March 2024)
