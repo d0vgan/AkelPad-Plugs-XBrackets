@@ -97,15 +97,16 @@ COLORREF     bracketsColourHighlight[2] = { RGB(0xD0, 0x40, 0x40), RGB(0xFF, 0xF
 COLORREF     g_CustomColoursHighlight[MAX_CUSTOM_COLOURS] = { RGB(0xD0,0x40,0x40), RGB(0x10,0x70,0xC0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 COLORREF     g_CustomColoursHighlight_0[MAX_CUSTOM_COLOURS] = { 0 };
 
-wchar_t      strHtmlFileExtsW[STR_FILEEXTS_SIZE] = L"htm; xml; php\0";
-wchar_t      strHtmlFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-wchar_t      strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE] = L"js; pas; py; ps1; sh\0";
-wchar_t      strSingleQuoteFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
-wchar_t      strEscaped1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
-wchar_t      strComment1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
-wchar_t      strComment1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
 wchar_t      strPluginFuncMainW[STR_PLUGINFUNC_SIZE] = { 0 };
+wchar_t      strHtmlFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
+wchar_t      strSingleQuoteFileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
+wchar_t      strEscaped1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
+wchar_t      strComment1FileExtsW_0[STR_FILEEXTS_SIZE] = { 0 };
+
+wchar_t      strHtmlFileExtsW[STR_FILEEXTS_SIZE] = L"htm; xml; php\0";
+wchar_t      strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE] = L"js; pas; py; ps1; sh\0";
+wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
+wchar_t      strComment1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 
 #ifndef _WIN64
 char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
@@ -139,12 +140,13 @@ DWORD        opt_dwHighlightRGB0[2] = { OPT_UNDEFINED_DWORD, OPT_UNDEFINED_DWORD
 DWORD        g_dwOptions[OPT_DWORD_COUNT] = { 0 };
 DWORD        g_dwOptions0[OPT_DWORD_COUNT] = { 0 };
 
-wchar_t      opt_szUserBracketsW[MAX_USER_BRACKETS*4] = { 0x00AB, 0x00BB, L' ', 0x2018, 0x2019, L' ', 0x201C, 0x201D, 0 };
 wchar_t      opt_szUserBracketsW_0[MAX_USER_BRACKETS*4] = { 0 };
-wchar_t      opt_szNextCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L".,!?:;<)]}\"\'>/ \x00BB\x2019\x201D\0";
 wchar_t      opt_szNextCharOkW_0[MAX_PREV_NEXT_CHAR_OK_SIZE] = { 0 };
-wchar_t      opt_szPrevCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L"([{<= \x00AB\x2018\x201C\0";
 wchar_t      opt_szPrevCharOkW_0[MAX_PREV_NEXT_CHAR_OK_SIZE] = { 0 };
+
+wchar_t      opt_szUserBracketsW[MAX_USER_BRACKETS*4] = { 0x00AB, 0x00BB, L' ', 0x2018, 0x2019, L' ', 0x201C, 0x201D, 0 };
+wchar_t      opt_szNextCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L".,!?:;<)]}\"\'>/ \x00BB\x2019\x201D\0";
+wchar_t      opt_szPrevCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L"([{<= \x00AB\x2018\x201C\0";
 
 #ifndef _WIN64
 char         opt_szUserBracketsA[MAX_USER_BRACKETS*4] = { 0xAB, 0xBB, ' ', 0x91, 0x92, ' ', 0x93, 0x94, 0 };
