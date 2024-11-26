@@ -173,7 +173,7 @@ void x_zero_mem(void* pDest, UINT_PTR nBytes)
     }
 }
 
-void* x_mem_alloc(SIZE_T nSizeInBytes)
+void* x_mem_alloc(UINT_PTR nSizeInBytes)
 {
     return SysMemAlloc(nSizeInBytes);
 }

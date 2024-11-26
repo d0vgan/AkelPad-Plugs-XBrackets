@@ -467,7 +467,10 @@ static BOOL OccurrencesData_Decrement(tOccurrencesData* ocd, int nType)
 }
 
 // functions prototypes
+#ifndef _WIN64
 static WCHAR char2wchar(const char ch);
+#endif
+
 static void  getEscapedPrefixPos(const INT_X nOffset, INT_X* pnPos, INT* pnLen);
 static BOOL  isEscapedPrefixW(const wchar_t* strW, int len);
 static BOOL  isEscapedPosW(const INT_X nOffset);
@@ -479,7 +482,6 @@ static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlight
                                  const INT_X nCharacterPosition, const CHARRANGE_X* pSelection);
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
 static BOOL  IsClearTypeEnabled(void);
-static void  CopyMemory1(void* dst, const void* src, unsigned int size);
 
 #ifndef _WIN64
 static BOOL  isEscapedPrefixA(const char* strA, int len);
@@ -1953,7 +1955,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
     if (cookie->nBracketType >= 0)
     {
       wch = getBracketsPairW(cookie->nBracketType)[0]; // left
-      CopyMemory1(&aeCh, &hlp->qm.crQuoteStart.ciMin, sizeof(AECHARINDEX));
+      x_mem_cpy(&aeCh, &hlp->qm.crQuoteStart.ciMin, sizeof(AECHARINDEX));
       if (aeCh.nLine == hlp->qm.crQuoteStart.ciMax.nLine)
         n = hlp->qm.crQuoteStart.ciMax.nCharInLine;
       else
@@ -1987,7 +1989,7 @@ static DWORD CALLBACK GetAkelEditHighlightCallback(UINT_PTR dwCookie, AECHARRANG
         if (cookie->nBracketType >= 0)
         {
           wch = getBracketsPairW(cookie->nBracketType)[1]; // right
-          CopyMemory1(&aeCh, &hlp->qm.crQuoteEnd.ciMax, sizeof(AECHARINDEX));
+          x_mem_cpy(&aeCh, &hlp->qm.crQuoteEnd.ciMax, sizeof(AECHARINDEX));
           if (aeCh.nLine == hlp->qm.crQuoteEnd.ciMin.nLine)
             n = hlp->qm.crQuoteEnd.ciMin.nCharInLine;
           else
@@ -4720,20 +4722,6 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
   }
 }
 
-/*static*/ void CopyMemory1(void* dst, const void* src, unsigned int size)
-{
-  unsigned char* pdst;
-  const unsigned char* psrc;
-
-  pdst = (unsigned char *) dst;
-  psrc = (const unsigned char *) src;
-
-  while ( size-- )
-  {
-    *(pdst++) = *(psrc++);
-  }
-}
-
 static void adjustFont(const DWORD dwFontStyle, const DWORD dwFontFlags,
                        BYTE* plfItalic, LONG* plfWeight)
 {
@@ -5266,6 +5254,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 
 //---------------------------------------------------------------------------
 
+#ifndef _WIN64
 /*static*/ WCHAR char2wchar(const char ch)
 {
   char  str[2] = {0, 0};
@@ -5275,6 +5264,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   MultiByteToWideChar(CP_ACP, 0, str, 1, wstr, 1);
   return wstr[0];
 }
+#endif
 
 /*static*/ void getEscapedPrefixPos(const INT_X nOffset, INT_X* pnPos, INT* pnLen)
 {
