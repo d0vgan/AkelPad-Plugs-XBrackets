@@ -1,0 +1,16 @@
+Docs\XBrackets-*.txt
+Plugs\XBrackets.dll
+Plugs64\XBrackets.dll
+Source\Build_*.cmd
+Source\*.dev
+Source\*.ds?
+Source\*.sln
+Source\*.vcproj
+Source\*.vcxproj
+Source\*.vcxproj.filters
+Source\XBrackets\*.c
+Source\XBrackets\*.h
+Source\XBrackets\*.ico
+Source\XBrackets\*.rc
+Source\XBrackets\*.txt
+Source\XBrackets\c_base\*.h
