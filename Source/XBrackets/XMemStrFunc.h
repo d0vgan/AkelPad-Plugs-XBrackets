@@ -3,6 +3,9 @@
 //---------------------------------------------------------------------------
 #include <windows.h>
 
+#define SysMemAlloc(sizeInBytes) (void *) GlobalAlloc( GMEM_FIXED, (sizeInBytes) )
+#define SysMemFree(ptr)          GlobalFree( (HGLOBAL) (ptr) )
+
 // memcmp
 int x_mem_cmp(const void *pSrc1, const void *pSrc2, UINT_PTR nBytes);
 
@@ -14,6 +17,12 @@ void x_mem_set(void *pDest, unsigned int c, UINT_PTR nBytes);
 
 // ZeroMemory
 void x_zero_mem(void* pDest, UINT_PTR nBytes);
+
+// allocates a memory block; to be freed with x_mem_free
+void* x_mem_alloc(SIZE_T nSizeInBytes);
+
+// deallocates a memory block allocated with x_mem_alloc
+void  x_mem_free(void* ptr);
 
 //---------------------------------------------------------------------------
 #endif

@@ -504,16 +504,6 @@ int main(void)
 }
 */
 
-static void* sys_memalloc(SIZE_T nBytes)
-{
-  return (void *) GlobalAlloc(GMEM_FIXED, nBytes);
-}
-
-static void sys_memfree(void* p)
-{
-  GlobalFree( (HGLOBAL) p );
-}
-
 static const wchar_t* getBracketsPairW(int nBracketType)
 {
   if ( nBracketType < tbtUser )
@@ -1232,7 +1222,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
         pBrPairA = getBracketsPairA(nBracketType);
         nBrAltType = nBracketType;
         nBrPairLen = lstrlenA(pBrPairA);
-        pTextA = (char*)sys_memalloc(sizeof(char)*(nSelLen + nBrPairLen + 2));
+        pTextA = (char *) x_mem_alloc(sizeof(char)*(nSelLen + nBrPairLen + 2));
         if (pTextA)
         {
           if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 3 ||
@@ -1324,7 +1314,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
             }
             AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditEndPos);
           }
-          sys_memfree(pTextA);
+          x_mem_free(pTextA);
         }
       }
       else
@@ -1340,7 +1330,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
         pBrPairW = getBracketsPairW(nBracketType);
         nBrAltType = nBracketType;
         nBrPairLen = lstrlenW(pBrPairW);
-        pTextW = (wchar_t*)sys_memalloc(sizeof(wchar_t)*(nSelLen + nBrPairLen + 2));
+        pTextW = (wchar_t *) x_mem_alloc(sizeof(wchar_t)*(nSelLen + nBrPairLen + 2));
         if (pTextW)
         {
           if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 3 ||
@@ -1432,7 +1422,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
             }
             AnyRichEdit_ExSetSelPosW(hActualEditWnd, nEditPos, nEditEndPos);
           }
-          sys_memfree(pTextW);
+          x_mem_free(pTextW);
         }
       }
 
