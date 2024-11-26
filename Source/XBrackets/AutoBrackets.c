@@ -4,7 +4,7 @@
 #include "XMemStrFunc.h"
 
 
-#ifdef _WIN64
+#ifndef XBR_OLD_WINDOWS
 #undef SendMessage
 #define SendMessage SendMessageW
 #endif
@@ -76,7 +76,7 @@ enum TBracketType {
   tbtUser
 };
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static const char* strBracketsA[tbtCount - 1] = {
   "()",
   "[]",
@@ -196,7 +196,7 @@ extern wchar_t  strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE];
 extern wchar_t  strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
 extern wchar_t  strComment1FileExtsW[STR_FILEEXTS_SIZE];
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 extern char     strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern char     strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
 extern char     strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
@@ -206,7 +206,7 @@ extern char     strComment1FileExtsA[STR_FILEEXTS_SIZE];
 extern DWORD    g_dwOptions[OPT_DWORD_COUNT];
 
 wchar_t         strUserBracketsW[MAX_USER_BRACKETS + 1][4];
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 char            strUserBracketsA[MAX_USER_BRACKETS + 1][4];
 #endif
 wchar_t         strNextCharOkW__[MAX_PREV_NEXT_CHAR_OK_SIZE];
@@ -467,7 +467,7 @@ static BOOL OccurrencesData_Decrement(tOccurrencesData* ocd, int nType)
 }
 
 // functions prototypes
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static WCHAR char2wchar(const char ch);
 #endif
 
@@ -483,7 +483,7 @@ static BOOL  GetHighlightIndexes(const unsigned int uFlags, const int nHighlight
 static void  GetPosFromChar(HWND hEd, const INT_X nCharacterPosition, POINTL* lpPos);
 static BOOL  IsClearTypeEnabled(void);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static BOOL  isEscapedPrefixA(const char* strA, int len);
 static BOOL  isEscapedPosA(const INT_X nOffset);
 #endif
@@ -514,7 +514,7 @@ static const wchar_t* getBracketsPairW(int nBracketType)
   return strUserBracketsW[nBracketType - tbtUser];
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static const char* getBracketsPairA(int nBracketType)
 {
   if ( nBracketType < tbtUser )
@@ -542,7 +542,7 @@ static BOOL isDuplicatedPair(int nBracketType)
 static wchar_t getCharAt(HWND hEd, INT_X nPos)
 {
   return (
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           g_bOldWindows ?
             char2wchar(AnyRichEdit_GetCharAt(hEd, nPos)) :
 #endif
@@ -781,7 +781,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
   }
 
   // verifying if a typed character is a bracket
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     char ch = (char) pmsgi->wParam;
@@ -806,7 +806,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
     INT_X nEditPos;
     INT_X nEditEndPos;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       AnyRichEdit_ExGetSelPos(pmsgi->hWnd, &nEditPos, &nEditEndPos);
     else
@@ -826,7 +826,7 @@ void OnEditCharPressed(MSGINFO* pmsgi)
           ++nEditPos;
           if (nAutoRightBracketType == tbtTag2)
             ++nEditPos;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           if (g_bOldWindows)
             AnyRichEdit_ExSetSelPos(pmsgi->hWnd, nEditPos, nEditPos);
           else
@@ -924,7 +924,7 @@ void OnEditGetActiveBrackets(HWND hEditWnd, UINT uMsg, UINT uFlags)
   updateActualState(hEditWnd);
 
   // getting current position and selection
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
     AnyRichEdit_ExGetSelPos(hActualEditWnd, &nEditPos, &nEditEndPos);
   else
@@ -1107,7 +1107,7 @@ static BOOL IsEnclosedInBracketsW(const wchar_t* pszTextLeftW, const wchar_t* ps
   return bRet;
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextRightA, int* pnBracketType, BOOL bInSelection)
 {
   const char* pszBrPairA;
@@ -1183,7 +1183,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
   }
 
   // getting current position and selection
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
     AnyRichEdit_ExGetSelPos(hActualEditWnd, &nEditPos, &nEditEndPos);
   else
@@ -1196,7 +1196,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     if (g_dwOptions[OPT_DWORD_AUTOCOMPLETE_SEL_AUTOBR] == 0)
     {
       // removing selection
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if (g_bOldWindows)
         AnyRichEdit_ReplaceSelText(hActualEditWnd, "", TRUE);
       else
@@ -1211,7 +1211,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
           nBracketType = tbtTag2;
       }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if (g_bOldWindows)
       {
         INT_X       nSelLen;
@@ -1522,7 +1522,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
 
     getEscapedPrefixPos(nEditPos, &pos, &len);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       char szPrefixA[MAX_ESCAPED_PREFIX + 2];
@@ -1562,7 +1562,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
       {
         INT_X nLineIndex;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if (g_bOldWindows)
           nLineIndex = AnyRichEdit_LineIndex(hActualEditWnd, ci.nLine);
         else
@@ -1582,7 +1582,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
         int     i;
         wchar_t wsz[8];
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if (g_bOldWindows)
         {
           nLen = lstrlenA(getBracketsPairA(nBracketType));
@@ -1624,7 +1624,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
     }
 
     // inserting brackets
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       AnyRichEdit_ReplaceSelText(hActualEditWnd, getBracketsPairA(nBracketType), TRUE);
     else
@@ -1633,7 +1633,7 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
 
     // placing cursor between brackets
     nEditPos++;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       AnyRichEdit_ExSetSelPos(hActualEditWnd, nEditPos, nEditPos);
     else
@@ -2782,7 +2782,7 @@ static unsigned int NearestBr_IsAtBracketCharacter(const INT_X nCharacterPositio
       nLen = 2; // { prev_wch, current_wch }
   }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if ( g_bOldWindows )
   {
     char ch[4] = { 0, 0, 0, 0 };
@@ -2983,7 +2983,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
     if ( g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] != 0 )
     {
       int nLine;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if ( g_bOldWindows )
         nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, nStartPos);
       else
@@ -2992,7 +2992,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
       if ( ((DWORD) nLine) > (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1) )
       {
         nLine -= (g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] - 1);
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if ( g_bOldWindows )
           nStopPos = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
         else
@@ -3018,7 +3018,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
     nBrPos = nStartPos - 1;
     if ( g_bAkelEdit )
     {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if ( g_bOldWindows )
         SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
       else
@@ -3049,7 +3049,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
           AEC_IndexDec(&aeci);
 
         #if NEARBR_CHARINDEX_LOOP_VERIFY
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           if ( g_bOldWindows )
             wch0 = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
           else
@@ -3074,7 +3074,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
       }
       else
       {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if ( g_bOldWindows )
           wch = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
         else
@@ -3104,7 +3104,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
                 }
                 else if ( g_bAkelEdit )
                 {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
                   if ( g_bOldWindows )
                     SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos - 1), (LPARAM) &aeci);
                   else
@@ -3266,7 +3266,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
     if ( g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES] != 0 )
     {
       int nLine1, nLine2;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if ( g_bOldWindows )
       {
         nLine1 = AnyRichEdit_ExLineFromChar(hActualEditWnd, nStartPos);
@@ -3282,7 +3282,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
       {
         nLine2 = nLine1 + g_dwOptions[OPT_DWORD_NEARESTBR_MAX_LINES]; // - 1 + 1
         // to the end of nLine2 (= to the beginning of the next line)
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if ( g_bOldWindows )
           nStopPos = AnyRichEdit_LineIndex(hActualEditWnd, nLine2);
         else
@@ -3307,7 +3307,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
     nBrPos = nStartPos;
     if ( g_bAkelEdit )
     {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if ( g_bOldWindows )
         SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) nBrPos, (LPARAM) &aeci);
       else
@@ -3341,7 +3341,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
           AEC_IndexInc(&aeci);
 
         #if NEARBR_CHARINDEX_LOOP_VERIFY
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           if ( g_bOldWindows )
             wch0 = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
           else
@@ -3366,7 +3366,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
       }
       else
       {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if ( g_bOldWindows )
           wch = char2wchar(AnyRichEdit_GetCharAt(hActualEditWnd, nBrPos));
         else
@@ -3392,7 +3392,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
                 nBrPos = c.pos2;  //  ...|"
                 if ( g_bAkelEdit )
                 {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
                   if ( g_bOldWindows )
                     SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) (nBrPos + 1), (LPARAM) &aeci);
                   else
@@ -4042,7 +4042,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
 
     getEscapedPrefixPos(nCharacterPosition, &pos, &len);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       char szPrefixA[MAX_ESCAPED_PREFIX + 2];
@@ -4092,7 +4092,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
       wchFail = 0;
     nFailReferences = 0;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, nCharacterPosition);
@@ -4177,7 +4177,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
       else
       {
         pcwszLine = wszLine;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
         if (g_bOldWindows)
         {
           nLine = AnyRichEdit_ExLineFromChar(hActualEditWnd, i);
@@ -4240,7 +4240,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         }
         else
         {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           if (g_bOldWindows)
           {
             nLen = AnyRichEdit_GetLine(hActualEditWnd, nLine, szLine, 0x10000-1);
@@ -4287,7 +4287,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         {
           INT_X nLinePosition;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           if (g_bOldWindows)
             nLinePosition = AnyRichEdit_LineIndex(hActualEditWnd, nLine);
           else
@@ -4359,7 +4359,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
             break;
           }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
           if (g_bOldWindows)
             pos1 = i + AnyRichEdit_LineIndex(hActualEditWnd, nLine);
           else
@@ -4585,7 +4585,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
         }
       }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if (g_bOldWindows)
       {
         i += AnyRichEdit_LineIndex(hActualEditWnd, nLine);
@@ -4702,7 +4702,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
     // RichEdit 2.0
     LRESULT coord;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       coord = SendMessageA(hEd, EM_POSFROMCHAR, (WPARAM) nCharacterPosition, 0);
     else
@@ -4713,7 +4713,7 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
   }
   else
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       SendMessageA(hEd, EM_POSFROMCHAR, (WPARAM) lpPos, (LPARAM) nCharacterPosition);
     else
@@ -4777,7 +4777,7 @@ BOOL IsClearTypeEnabled(void)
   bFontSmoothing = FALSE;
   nFontSmoothingType = 0;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     SystemParametersInfoA(SPI_GETFONTSMOOTHING, 0, &bFontSmoothing, 0);
@@ -4830,7 +4830,7 @@ BOOL IsClearTypeEnabled(void)
   }
   // contents of *pchd and chd are equal now
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     if ((nCharacterPosition < AnyRichEdit_FirstVisibleCharIndex(hActualEditWnd)) ||
@@ -4914,13 +4914,13 @@ BOOL IsClearTypeEnabled(void)
       HFONT        hFont, hFontOld;
       RECT         rect;
       COLORREF     textColor, bkColor;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       LOGFONTA     lfA;
 #endif
       LOGFONTW     lfW;
       //INT         sel1, sel2;
       int          nBkModePrev;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       char         strA[2];
 #endif
       wchar_t      strW[2];
@@ -4931,7 +4931,7 @@ BOOL IsClearTypeEnabled(void)
       HideCaret(hActualEditWnd);
 
       // at first we select a font...
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if (g_bOldWindows)
       {
         HFONT hf;
@@ -4962,7 +4962,7 @@ BOOL IsClearTypeEnabled(void)
       hFontOld = (HFONT) SelectObject(hDC, hFont);
 
       // ...then we call GetTextMetrics for this font...
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if (g_bOldWindows)
       {
         TEXTMETRICA tmA;
@@ -5041,7 +5041,7 @@ BOOL IsClearTypeEnabled(void)
       rect.top    = ptBegin.y;
       rect.right  = ptEnd.x;
       rect.bottom = ptEnd.y;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
       if (g_bOldWindows)
       {
         if (uHighlightFlags & HF_DOHIGHLIGHT)
@@ -5254,7 +5254,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
 
 //---------------------------------------------------------------------------
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 /*static*/ WCHAR char2wchar(const char ch)
 {
   char  str[2] = {0, 0};
@@ -5290,7 +5290,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   return (k % 2) ? TRUE : FALSE;
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 /*static*/ BOOL isEscapedPrefixA(const char* strA, int len)
 {
   int k = 0;
@@ -5313,7 +5313,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   return isEscapedPrefixW(szPrefixW, len);
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 /*static*/ BOOL isEscapedPosA(const INT_X nOffset)
 {
   INT_X pos;
@@ -5331,7 +5331,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   if ( bBracketsSkipEscaped1 && (nCurrentFileType2 & tfmEscaped1) )
   {
     return (
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
             g_bOldWindows ?
               isEscapedPosA(nOffset) :
 #endif
@@ -5391,7 +5391,7 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   }
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static const char* getFileExtA(const char* cszFileNameA)
 {
   if (cszFileNameA)
@@ -5429,7 +5429,7 @@ static const wchar_t* getFileExtW(const wchar_t* cszFileNameW)
 
 static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
   wchar_t* szExtListW
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     , char* szExtListA
 #endif
 )
@@ -5439,7 +5439,7 @@ static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
     int      len, i, n;
     wchar_t  szW[MAX_EXT];
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       len = lstrlenA(szExtListA);
@@ -5483,7 +5483,7 @@ static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
 static BOOL wstr_is_comment1_ext(const wchar_t* szExtW)
 {
   return wstr_is_listed_ext(szExtW, strComment1FileExtsW
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
             , strComment1FileExtsA
 #endif
   );
@@ -5504,7 +5504,7 @@ static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
   }
   */
   return wstr_is_listed_ext(szExtW, strEscaped1FileExtsW
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
             , strEscaped1FileExtsA
 #endif
   );
@@ -5513,7 +5513,7 @@ static BOOL wstr_is_escaped1_ext(const wchar_t* szExtW)
 static BOOL wstr_is_singlequote_ext(const wchar_t* szExtW)
 {
   return wstr_is_listed_ext(szExtW, strSingleQuoteFileExtsW
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
             , strSingleQuoteFileExtsA
 #endif
   );
@@ -5526,7 +5526,7 @@ static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
     int      len, i, n;
     wchar_t  szW[MAX_EXT];
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       len = lstrlenA(strHtmlFileExtsA);
@@ -5583,7 +5583,7 @@ int getFileType(int* pnCurrentFileType2)
 
   if (SendMessage(g_hMainWnd, AKD_GETEDITINFO, (WPARAM) hActualEditWnd, (LPARAM) &ei) != 0)
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       p = getFileExtA( (const char*) ei.pFile ); // file extension ptr (char *)
@@ -5757,7 +5757,7 @@ void setPrevCharOkW(const wchar_t* cszPrevCharOkW)
   copyUniqueCharsOkW(&prevCharOkW, cszPrevCharOkW);
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 void setUserBracketsA(const char* cszUserBracketsA)
 {
   strUserBracketsA[0][0] = 0;
@@ -5875,7 +5875,7 @@ void setUserBracketsW(const wchar_t* cszUserBracketsW)
   }
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 const char* getCurrentBracketsPairA(void)
 {
   static char szBracketsPair[4];

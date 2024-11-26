@@ -19,6 +19,11 @@
   #endif
 #endif
 
+// XBR_OLD_WINDOWS specifies whether the old (non-Unicode) Windows is supported
+#ifndef _WIN64
+  #define XBR_OLD_WINDOWS
+#endif
+
 // this definition enables or disables
 // additional Unicode functions for controls
 // 1 - on, 0 - off

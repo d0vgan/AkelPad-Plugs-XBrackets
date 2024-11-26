@@ -9,7 +9,7 @@
 #include <commdlg.h>
 
 
-#ifdef _WIN64
+#ifndef XBR_OLD_WINDOWS
 #undef SendMessage
 #define SendMessage SendMessageW
 #endif
@@ -44,7 +44,7 @@ extern wchar_t     strEscaped1FileExtsW[STR_FILEEXTS_SIZE];
 extern wchar_t     strComment1FileExtsW[STR_FILEEXTS_SIZE];
 extern wchar_t     strPluginFuncMainW[STR_PLUGINFUNC_SIZE];
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 extern char        strHtmlFileExtsA[STR_FILEEXTS_SIZE];
 extern char        strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE];
 extern char        strEscaped1FileExtsA[STR_FILEEXTS_SIZE];
@@ -230,14 +230,14 @@ INT_PTR CALLBACK SettingsDlgProc(
 }
 
 static void settdlg_WriteOptToStr(HWND hEd,
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     char* strOptStrA,
 #endif
     wchar_t* strOptStrW, int nMaxStr)
 {
   if (hEd)
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       GetWindowTextA(hEd, strOptStrA, nMaxStr);
     else
@@ -251,25 +251,25 @@ BOOL SettingsDlg_OnOK(HWND hDlg)
   UINT uState;
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strSingleQuoteFileExtsA,
 #endif
       strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strHtmlFileExtsA,
 #endif
       strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strEscaped1FileExtsA,
 #endif
       strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_WriteOptToStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strComment1FileExtsA,
 #endif
       strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
@@ -343,7 +343,7 @@ void SettingsDlg_OnBtColor(HWND hDlg, UINT uButtonID)
   {
     i = 0;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       CHOOSECOLORA ccA;
@@ -494,7 +494,7 @@ void SettingsDlg_OnDrawItem(HWND hDlg, UINT uControlID, DRAWITEMSTRUCT* pDis)
 
 static void showPluginStatus(HWND hDlg)
 {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     DlgItem_SetText(hDlg, IDC_ST_PLUGINSTATE, FALSE,
@@ -520,7 +520,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
     bDoInitializeHere = FALSE;
   }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     if (bDoInitializeHere)
@@ -561,7 +561,7 @@ void SettingsDlg_OnStPluginStateDblClicked(HWND hDlg)
 }
 
 static void settdlg_InitOptFromStr(HWND hEd,
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     const char* strOptStrA,
 #endif
     const wchar_t* strOptStrW, int nMaxStr)
@@ -570,7 +570,7 @@ static void settdlg_InitOptFromStr(HWND hEd,
   {
     SendMessage(hEd, EM_LIMITTEXT, (WPARAM) nMaxStr, 0);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
       SetWindowTextA(hEd, strOptStrA);
     else
@@ -666,25 +666,25 @@ void SettingsDlg_OnInitDialog(HWND hDlg)
   showPluginStatus(hDlg);
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOSINGLEQUOTEIF),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strSingleQuoteFileExtsA,
 #endif
       strSingleQuoteFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_DOTAGIF),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strHtmlFileExtsA,
 #endif
       strHtmlFileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPESCAPED1),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strEscaped1FileExtsA,
 #endif
       strEscaped1FileExtsW, STR_FILEEXTS_SIZE - 1 );
 
   settdlg_InitOptFromStr( GetDlgItem(hDlg, IDC_ED_BRACKETS_SKIPCOMMENT1),
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     strComment1FileExtsA,
 #endif
       strComment1FileExtsW, STR_FILEEXTS_SIZE - 1 );
@@ -725,7 +725,7 @@ void SettingsDlg_UpdateStateOfChBrackets(HWND hDlg, BOOL bInvert)
     BM_SETCHECK, uState, 0);
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static void fillToolInfoA(
   TOOLINFOA* lptiA,
   LPSTR      lpToolTipText,
@@ -785,7 +785,7 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
   iccex.dwSize = sizeof(INITCOMMONCONTROLSEX);
   InitCommonControlsEx(&iccex);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     hToolTip = CreateWindowExA(WS_EX_TOPMOST, TOOLTIPS_CLASSA,
@@ -808,7 +808,7 @@ HWND SettingsDlg_InitToolTip(HWND hDlg)
     SetWindowPos(hToolTip, HWND_TOPMOST,
       0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       TOOLINFOA tiA;

@@ -19,7 +19,7 @@ typedef struct sDlgItemLngW {
 
 
 /* ENG */
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 tDlgItemLngA xbrSettingsDlgItemsA_eng[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          "Autocomplete brackets ([{\"\"}])"                   },
@@ -68,7 +68,7 @@ tDlgItemLngW xbrSettingsDlgItemsW_eng[] =
 };
 
 /* RUS */
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 tDlgItemLngA xbrSettingsDlgItemsA_rus[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          "\xC0\xE2\xF2\xEE\xE7\xE0\xEA\xF0\xFB\xF2\xE8\xE5\x20\xF1\xEA\xEE\xE1\xEE\xEA ([{\"\"}])"            },
@@ -117,7 +117,7 @@ tDlgItemLngW xbrSettingsDlgItemsW_rus[] =
 };
 
 /* UKR */
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 tDlgItemLngA xbrSettingsDlgItemsA_ukr[] =
 {
     { IDC_CH_BRACKETS_AUTOCOMPLETE,          "\xC0\xE2\xF2\xEE\xE7\xE0\xEA\xF0\xE8\xF2\xF2\xFF\x20\xE4\xF3\xE6\xEE\xEA ([{\"\"}])"                    },
@@ -179,7 +179,7 @@ static const tDlgItemLngW* xbrGetDlgItemLngW(LANGID sysLangId)
     return pDIL;
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static const tDlgItemLngA* xbrGetDlgItemLngA(LANGID sysLangId)
 {
     const tDlgItemLngA* pDIL;
@@ -199,7 +199,7 @@ void xbrSetSettingsDlgLang(HWND hDlg, LANGID sysLangId)
 {
     sysLangId = PRIMARYLANGID(sysLangId);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if ( g_bOldWindows )
     {
         const tDlgItemLngA* pDIL = xbrGetDlgItemLngA(sysLangId);
@@ -247,7 +247,7 @@ void xbrSetAutocompleteWindowText(HWND hDlg, LANGID sysLangId)
 
     sysLangId = PRIMARYLANGID(sysLangId);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if ( g_bOldWindows )
     {
         const tDlgItemLngA* pDIL;
@@ -376,7 +376,7 @@ void xbrSetAutocompleteWindowText(HWND hDlg, LANGID sysLangId)
 }
 
 /* ENG */
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 const char* strA_eng[XBR_STRCOUNT] =
 {
     "Status: the plugin is active",
@@ -393,7 +393,7 @@ const wchar_t* strW_eng[XBR_STRCOUNT] =
 };
 
 /* RUS */
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 const char* strA_rus[XBR_STRCOUNT] =
 {
     "\xD1\xEE\xF1\xF2\xEE\xFF\xED\xE8\xE5\x3A\x20\xEF\xEB\xE0\xE3\xE8\xED\x20\xE0\xEA\xF2\xE8\xE2\xE5\xED",
@@ -410,7 +410,7 @@ const wchar_t* strW_rus[XBR_STRCOUNT] =
 };
 
 /* UKR */
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 const char* strA_ukr[XBR_STRCOUNT] =
 {
     "\xD1\xF2\xE0\xED\x3A\x20\xEF\xEB\xE0\xE3\xB3\xED\x20\xE0\xEA\xF2\xE8\xE2\xED\xE8\xE9",
@@ -427,7 +427,7 @@ const wchar_t* strW_ukr[XBR_STRCOUNT] =
 };
 
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 const char* xbrGetStrA(unsigned int strId, LANGID sysLangId)
 {
     sysLangId = PRIMARYLANGID(sysLangId);

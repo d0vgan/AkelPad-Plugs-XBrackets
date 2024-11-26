@@ -1,6 +1,7 @@
 #ifndef _plugin_h_
 #define _plugin_h_
 //---------------------------------------------------------------------------
+#include "base.h"
 #include "AkelEdit.h" // "AkelEdit.h" MUST be before "AkelDLL.h"
 #include "AkelDLL.h"  // "AkelDLL.h" MUST be after "AkelEdit.h"
 

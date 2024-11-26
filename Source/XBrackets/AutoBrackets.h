@@ -90,7 +90,7 @@ void  setPrevCharOkW(const wchar_t* cszPrevCharOkW);
 void  setUserBracketsW(const wchar_t* cszUserBracketsW);
 const wchar_t* getCurrentBracketsPairW(void);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 void  setUserBracketsA(const char* cszUserBracketsA);
 const char* getCurrentBracketsPairA(void);
 #endif

@@ -1,4 +1,3 @@
-#include "base.h"
 #include "AutoBrackets.h"
 #include "SettingsDlg.h"
 #include "resource.h"
@@ -8,7 +7,7 @@
 #include "XMemStrFunc.h"
 
 
-#ifdef _WIN64
+#ifndef XBR_OLD_WINDOWS
 #undef SendMessage
 #define SendMessage SendMessageW
 #endif
@@ -108,7 +107,7 @@ wchar_t      strSingleQuoteFileExtsW[STR_FILEEXTS_SIZE] = L"js; pas; py; ps1; sh
 wchar_t      strEscaped1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 wchar_t      strComment1FileExtsW[STR_FILEEXTS_SIZE] = L"cs; java; js; php\0";
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 char         strHtmlFileExtsA[STR_FILEEXTS_SIZE] = "htm; xml; php\0";
 char         strSingleQuoteFileExtsA[STR_FILEEXTS_SIZE] = "js; pas; py; ps1; sh\0";
 char         strEscaped1FileExtsA[STR_FILEEXTS_SIZE] = "cs; java; js; php\0";
@@ -148,7 +147,7 @@ wchar_t      opt_szUserBracketsW[MAX_USER_BRACKETS*4] = { 0x00AB, 0x00BB, L' ', 
 wchar_t      opt_szNextCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L".,!?:;<)]}\"\'>/ \x00BB\x2019\x201D\0";
 wchar_t      opt_szPrevCharOkW[MAX_PREV_NEXT_CHAR_OK_SIZE] = L"([{<= \x00AB\x2018\x201C\0";
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 char         opt_szUserBracketsA[MAX_USER_BRACKETS*4] = { 0xAB, 0xBB, ' ', 0x91, 0x92, ' ', 0x93, 0x94, 0 };
 char         opt_szNextCharOkA[MAX_PREV_NEXT_CHAR_OK_SIZE] = ".,!?:;<)]}\"\'>/ \xBB\x92\x94\0";
 char         opt_szPrevCharOkA[MAX_PREV_NEXT_CHAR_OK_SIZE] = "([{<= \xAB\x91\x93\0";
@@ -164,7 +163,7 @@ extern TEXTMETRICW  AenPaint_tmW;
 extern TEXTMETRICA  AenPaint_tmA;
 #endif
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static const char* cszOptNamesA[OPT_TOTAL_COUNT] = {
   // dword options
   /* OPT_DWORD_AUTOCOMPLETE_ALL_AUTOBR      */  "autocomplete.all_autobr",
@@ -282,7 +281,7 @@ static LANGID getAkelPadLang(PLUGINDATA* pd)
 }
 
 // from "StrFunc.h"
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static int xitoaA(INT_PTR nNumber, char *szStr)
 {
   char szReverse[128];
@@ -364,7 +363,7 @@ void __declspec(dllexport) Main(PLUGINDATA *pd)
   updatePluginGlobalState(pd);
   updatePluginData(pd);
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if ( pd->bOldWindows )
     lstrcpyA( (LPSTR) strPluginFuncMainW, (LPCSTR) pd->pFunction );
   else
@@ -445,7 +444,7 @@ void __declspec(dllexport) Settings(PLUGINDATA *pd)
   prevBracketsSkipComment1 = bBracketsSkipComment1;
   bUpdateBracketsHighlight = FALSE;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     nRet = DialogBoxA(pd->hInstanceDLL, MAKEINTRESOURCEA(IDD_SETTINGS),
@@ -698,7 +697,7 @@ static void funcGetCurrentBrackets(PLUGINDATA *pd)
 {
   if ( IsExtCallParamValid(pd->lParam, 2) )
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if ( pd->bOldWindows )
     {
       char* pszBuf = (char *) GetExtCallParam(pd->lParam, 2);
@@ -1482,7 +1481,7 @@ void Uninitialize(BOOL bIsExiting )
   }
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static const char* getOldOptionNameA(const char* pszNameA)
 {
   while ( (*pszNameA) && (*pszNameA != '.') )
@@ -1506,7 +1505,7 @@ static const wchar_t* getOldOptionNameW(const wchar_t* pszNameW)
   return pszNameW;
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static BOOL readOptionA(HANDLE hOptions, const char* pszOptionNameA,
                  void* pData, DWORD dwDataSize, DWORD dwOptionType)
 {
@@ -1560,7 +1559,7 @@ static BOOL readOptionW(HANDLE hOptions, const wchar_t* pszOptionNameW,
   return (dwSize > 0);
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static BOOL readOptionBinaryA(HANDLE hOptions, const char* pszOptionNameA, void* pBuf, DWORD dwBufSize)
 {
   return readOptionA(hOptions, pszOptionNameA, pBuf, dwBufSize, PO_BINARY);
@@ -1572,7 +1571,7 @@ static BOOL readOptionBinaryW(HANDLE hOptions, const wchar_t* pszOptionNameW, vo
   return readOptionW(hOptions, pszOptionNameW, pBuf, dwBufSize, PO_BINARY);
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static BOOL readOptionDwordA(HANDLE hOptions, const char* pszOptionNameA, DWORD* pdwValue)
 {
   return readOptionA(hOptions, pszOptionNameA, pdwValue, sizeof(DWORD), PO_DWORD);
@@ -1584,7 +1583,7 @@ static BOOL readOptionDwordW(HANDLE hOptions, const wchar_t* pszOptionNameW, DWO
   return readOptionW(hOptions, pszOptionNameW, pdwValue, sizeof(DWORD), PO_DWORD);
 }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
 static BOOL readOptionStrA(HANDLE hOptions, const char* pszOptionNameA, char* pszStrA, DWORD dwStrSize)
 {
   return readOptionA(hOptions, pszOptionNameA, pszStrA, dwStrSize*sizeof(char), PO_STRING);
@@ -1615,7 +1614,7 @@ void ReadOptions(void)
     g_dwOptions0[i] = OPT_UNDEFINED_DWORD;
   }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     HANDLE hOptions;
@@ -1810,7 +1809,7 @@ void ReadOptions(void)
 
   if (opt_szNextCharOkW_0[0] != 0)
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       lstrcpyA(opt_szNextCharOkA, (LPCSTR)opt_szNextCharOkW_0);
@@ -1827,7 +1826,7 @@ void ReadOptions(void)
 
   if (opt_szPrevCharOkW_0[0] != 0)
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       lstrcpyA(opt_szPrevCharOkA, (LPCSTR)opt_szPrevCharOkW_0);
@@ -1844,7 +1843,7 @@ void ReadOptions(void)
 
   if (opt_szUserBracketsW_0[0] != 0)
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       lstrcpyA(opt_szUserBracketsA, (LPCSTR)opt_szUserBracketsW_0);
@@ -1858,7 +1857,7 @@ void ReadOptions(void)
     }
   }
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     setUserBracketsA(opt_szUserBracketsA);
@@ -1968,7 +1967,7 @@ void SaveOptions(void)
     dwNewOptionsFlags |= OPTF_HLTAG;
 
   nUpdatedOptions = 0;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if (g_bOldWindows)
   {
     if ( lstrcmpiA((LPCSTR) strHtmlFileExtsW_0, strHtmlFileExtsA) != 0 )
@@ -2026,7 +2025,7 @@ void SaveOptions(void)
       (dwNewHighlightRGB[1] != opt_dwHighlightRGB0[1]) ||
       (nUpdatedOptions != 0))
   {
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
     if (g_bOldWindows)
     {
       HANDLE        hOptions;
@@ -2276,7 +2275,7 @@ BOOL GetFuncNameOfXBracketsMain(const PLUGINDATA *pd)
   BOOL bResult;
 
   bResult = TRUE;
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if ( pd->bOldWindows )
   {
     char* pPluginFuncMainA;
@@ -2328,7 +2327,7 @@ BOOL PluginCallXBracketsMain(HWND hMainWnd, BOOL bOldWindows)
 {
   int nCallResult = -1;
 
-#ifndef _WIN64
+#ifdef XBR_OLD_WINDOWS
   if ( bOldWindows )
   {
     if ( ((LPCSTR)strPluginFuncMainW)[0] )
@@ -2344,7 +2343,7 @@ BOOL PluginCallXBracketsMain(HWND hMainWnd, BOOL bOldWindows)
   else
 #endif
   {
-#ifdef _WIN64
+#ifndef XBR_OLD_WINDOWS
     (bOldWindows); // unused
 #endif
 
