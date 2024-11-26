@@ -24,5 +24,9 @@ void* x_mem_alloc(UINT_PTR nSizeInBytes);
 // deallocates a memory block allocated with x_mem_alloc
 void  x_mem_free(void* ptr);
 
+// Note: str and substr must not be NULL!
+BOOL x_wstr_startswith(const WCHAR* str, const WCHAR* substr);
+int  x_wstr_cmp(const WCHAR* str1, const WCHAR* str2);
+
 //---------------------------------------------------------------------------
 #endif

@@ -183,3 +183,30 @@ void  x_mem_free(void* ptr)
     SysMemFree(ptr);
 }
 
+BOOL x_wstr_startswith(const WCHAR* str, const WCHAR* substr)
+{
+    for ( ; ; )
+    {
+        if ( *substr == 0 )
+            break; // end of substr - OK
+
+        if ( *substr != *str )
+            return FALSE; // diff
+
+        ++substr;
+        ++str;
+    }
+
+    return TRUE;
+}
+
+int x_wstr_cmp(const WCHAR* str1, const WCHAR* str2)
+{
+    while ( *str1 != 0 && *str1 == *str2 )
+    {
+        ++str1;
+        ++str2;
+    }
+
+    return ( ((WORD) *str1) - ((WORD) *str2) );
+}

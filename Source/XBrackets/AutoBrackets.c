@@ -5427,28 +5427,6 @@ static const wchar_t* getFileExtW(const wchar_t* cszFileNameW)
   return NULL;
 }
 
-// IMPORTANT!!!  wstr1 and wstr2 must be valid strings!
-static int wstr_unsafe_cmp(const wchar_t* wstr1, const wchar_t* wstr2)
-{
-  while ( (*wstr1) && (*wstr1 == *wstr2) )
-  {
-    ++wstr1;
-    ++wstr2;
-  }
-  return (*wstr1 - *wstr2);
-}
-
-// IMPORTANT!!!  wstr and wsubstr must be valid strings!
-static int wstr_unsafe_subcmp(const wchar_t* wstr, const wchar_t* wsubstr)
-{
-  while ( (*wstr) && (*wstr == *wsubstr) )
-  {
-    ++wstr;
-    ++wsubstr;
-  }
-  return (*wsubstr) ? (*wstr - *wsubstr) : 0;
-}
-
 static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
   wchar_t* szExtListW
 #ifndef _WIN64
@@ -5491,7 +5469,7 @@ static BOOL wstr_is_listed_ext(const wchar_t* szExtW,
         if (n > 0)
         {
           szW[n] = 0;
-          if (wstr_unsafe_cmp(szExtW, szW) == 0)
+          if (x_wstr_cmp(szExtW, szW) == 0)
             return TRUE;
         }
         n = 0;
@@ -5581,7 +5559,7 @@ static BOOL wstr_is_html_compatible(const wchar_t* szExtW)
           n = 0;
           while (szExtW[n])
           {
-            if (wstr_unsafe_subcmp(szExtW + n, szW) == 0)
+            if (x_wstr_startswith(szExtW + n, szW))
               return TRUE;
             else
               ++n;
@@ -5648,23 +5626,23 @@ int getFileType(int* pnCurrentFileType2)
 
     //MessageBoxW(NULL, szExtW, L"ext", MB_OK);
 
-    if ( (wstr_unsafe_cmp(szExtW, L"c") == 0)   ||
-         (wstr_unsafe_cmp(szExtW, L"cc") == 0) ||
-         (wstr_unsafe_cmp(szExtW, L"cpp") == 0) ||
-         (wstr_unsafe_cmp(szExtW, L"cxx") == 0) )
+    if ( (x_wstr_cmp(szExtW, L"c") == 0)   ||
+         (x_wstr_cmp(szExtW, L"cc") == 0) ||
+         (x_wstr_cmp(szExtW, L"cpp") == 0) ||
+         (x_wstr_cmp(szExtW, L"cxx") == 0) )
     {
       nType = tftC_Cpp;
       nType2 = tfmComment1 | tfmEscaped1;
     }
-    else if ( (wstr_unsafe_cmp(szExtW, L"h") == 0) ||
-              (wstr_unsafe_cmp(szExtW, L"hh") == 0) ||
-              (wstr_unsafe_cmp(szExtW, L"hpp") == 0) ||
-              (wstr_unsafe_cmp(szExtW, L"hxx") == 0) )
+    else if ( (x_wstr_cmp(szExtW, L"h") == 0) ||
+              (x_wstr_cmp(szExtW, L"hh") == 0) ||
+              (x_wstr_cmp(szExtW, L"hpp") == 0) ||
+              (x_wstr_cmp(szExtW, L"hxx") == 0) )
     {
       nType = tftH_Hpp;
       nType2 = tfmComment1 | tfmEscaped1;
     }
-    else if ( wstr_unsafe_cmp(szExtW, L"pas") == 0 )
+    else if ( x_wstr_cmp(szExtW, L"pas") == 0 )
     {
       nType = tftPas;
       nType2 = tfmComment1;
