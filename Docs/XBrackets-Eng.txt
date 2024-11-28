@@ -264,6 +264,7 @@ History:
 v.8.2 (2024)
  * Glory to Ukraine! Glory to the heroes!
  - fixed: brackets were not highlighted in a newly created tab in PMDI mode
+ - fixed: GoToNearestBracket might fail within HTML tags
  * the size of the 64-bit XBrackets.dll has been reduced
  * some internal improvements
 
