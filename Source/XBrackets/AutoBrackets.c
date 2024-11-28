@@ -108,8 +108,8 @@ INT_X IndexesHighlighted[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
 INT_X IndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 };
 INT_X prevIndexesToHighlight[HIGHLIGHT_INDEXES] = { -1, -1, -1, -1, -1, -1 }; // "cached" indexes
 INT_X CurrentBracketsIndexes[2] = { -1, -1 };
-INT_X NearestBracketsIndexes[4] = { -1, -1, tbtNone, 0 }; // "cached" indexes + nBrType
-INT_X prevNearestBracketsIndexes[4] = { -1, -1, tbtNone, 0 }; // "cached" indexes + nBrType
+INT_X NearestBracketsIndexesAndType[4] = { -1, -1, tbtNone, 0 }; // "cached" indexes + nBrType
+INT_X prevNearestBracketsIndexesAndType[4] = { -1, -1, tbtNone, 0 }; // "cached" indexes + nBrType
 
 #define XBR_FONTSTYLE_UNDEFINED 0xF0F0F0FF
 #define XBR_FONTCOLOR_UNDEFINED ((DWORD)(-1))
@@ -2541,95 +2541,95 @@ static int GetAkelEditHighlightInfo(const int nHighlightIndex, const INT_X nChar
 
 static BOOL NearestBr_MatchCachedIndexes(const int action, const INT_X nCharacterPosition, CHARRANGE_X* out_cr)
 {
-  if ( NearestBracketsIndexes[0] != -1 )
+  if ( NearestBracketsIndexesAndType[0] != -1 )
   {
-    if ( nCharacterPosition == NearestBracketsIndexes[0] ) // |(
+    if ( nCharacterPosition == NearestBracketsIndexesAndType[0] ) // |(
     {
-      if ( NearestBracketsIndexes[2] == tbtTagInv )
+      if ( NearestBracketsIndexesAndType[2] == tbtTagInv )
         return FALSE;  //  skip  |>...<
 
       if ( action == XBRA_SELTO_NEARBR )
       {
-        out_cr->cpMin = NearestBracketsIndexes[0];     // |(...
-        out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ...)|
+        out_cr->cpMin = NearestBracketsIndexesAndType[0];     // |(...
+        out_cr->cpMax = NearestBracketsIndexesAndType[1] + 1; //    ...)|
       }
       else
       {
-        out_cr->cpMin = NearestBracketsIndexes[1] + 1; // )|
+        out_cr->cpMin = NearestBracketsIndexesAndType[1] + 1; // )|
         out_cr->cpMax = out_cr->cpMin;
       }
       return TRUE;
     }
 
-    if ( nCharacterPosition == NearestBracketsIndexes[0] + 1 ) // (|
+    if ( nCharacterPosition == NearestBracketsIndexesAndType[0] + 1 ) // (|
     {
       if ( action == XBRA_SELTO_NEARBR )
       {
         if ( (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) &&
-             (NearestBracketsIndexes[2] != tbtTagInv) )
+             (NearestBracketsIndexesAndType[2] != tbtTagInv) )
         {
-          out_cr->cpMin = NearestBracketsIndexes[0];     // |(...
-          out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ...)|
+          out_cr->cpMin = NearestBracketsIndexesAndType[0];     // |(...
+          out_cr->cpMax = NearestBracketsIndexesAndType[1] + 1; //    ...)|
         }
         else
         {
-          out_cr->cpMin = NearestBracketsIndexes[0] + 1; // (|...
-          out_cr->cpMax = NearestBracketsIndexes[1];     //    ...|)
+          out_cr->cpMin = NearestBracketsIndexesAndType[0] + 1; // (|...
+          out_cr->cpMax = NearestBracketsIndexesAndType[1];     //    ...|)
         }
       }
       else
       {
         if ( (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) &&
-             (NearestBracketsIndexes[2] != tbtTagInv) )
-          out_cr->cpMin = NearestBracketsIndexes[1] + 1; // )|
+             (NearestBracketsIndexesAndType[2] != tbtTagInv) )
+          out_cr->cpMin = NearestBracketsIndexesAndType[1] + 1; // )|
         else
-          out_cr->cpMin = NearestBracketsIndexes[1]; // |)
+          out_cr->cpMin = NearestBracketsIndexesAndType[1]; // |)
         out_cr->cpMax = out_cr->cpMin;
       }
       return TRUE;
     }
 
-    if ( nCharacterPosition == NearestBracketsIndexes[1] ) // |)
+    if ( nCharacterPosition == NearestBracketsIndexesAndType[1] ) // |)
     {
       if ( action == XBRA_SELTO_NEARBR )
       {
         if ( (g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) &&
-             (NearestBracketsIndexes[2] != tbtTagInv) )
+             (NearestBracketsIndexesAndType[2] != tbtTagInv) )
         {
-          out_cr->cpMin = NearestBracketsIndexes[0];     // |(...
-          out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ...)|
+          out_cr->cpMin = NearestBracketsIndexesAndType[0];     // |(...
+          out_cr->cpMax = NearestBracketsIndexesAndType[1] + 1; //    ...)|
         }
         else
         {
-          out_cr->cpMin = NearestBracketsIndexes[0] + 1; // (|...
-          out_cr->cpMax = NearestBracketsIndexes[1];     //    ...|)
+          out_cr->cpMin = NearestBracketsIndexesAndType[0] + 1; // (|...
+          out_cr->cpMax = NearestBracketsIndexesAndType[1];     //    ...|)
         }
       }
       else
       {
         if ( (g_dwOptions[OPT_DWORD_NEARESTBR_GOTO_FLAGS] & XBR_NBR_GOTO_OUTERPOS) &&
-             (NearestBracketsIndexes[2] != tbtTagInv) )
-          out_cr->cpMin = NearestBracketsIndexes[0]; // |(
+             (NearestBracketsIndexesAndType[2] != tbtTagInv) )
+          out_cr->cpMin = NearestBracketsIndexesAndType[0]; // |(
         else
-          out_cr->cpMin = NearestBracketsIndexes[0] + 1; // (|
+          out_cr->cpMin = NearestBracketsIndexesAndType[0] + 1; // (|
         out_cr->cpMax = out_cr->cpMin;
       }
       return TRUE;
     }
 
-    if ( nCharacterPosition == NearestBracketsIndexes[1] + 1 ) // )|
+    if ( nCharacterPosition == NearestBracketsIndexesAndType[1] + 1 ) // )|
     {
-      if ( NearestBracketsIndexes[2] == tbtTagInv )
+      if ( NearestBracketsIndexesAndType[2] == tbtTagInv )
         return FALSE;  //  skip  >...<|
 
       if ( action == XBRA_SELTO_NEARBR )
       {
-        out_cr->cpMin = NearestBracketsIndexes[0];     // |(...
-        out_cr->cpMax = NearestBracketsIndexes[1] + 1; //    ...)|
+        out_cr->cpMin = NearestBracketsIndexesAndType[0];     // |(...
+        out_cr->cpMax = NearestBracketsIndexesAndType[1] + 1; //    ...)|
       }
       else
       {
-        out_cr->cpMin = NearestBracketsIndexes[0]; // |(
+        out_cr->cpMin = NearestBracketsIndexesAndType[0]; // |(
         out_cr->cpMax = out_cr->cpMin;
       }
       return TRUE;
@@ -3086,7 +3086,7 @@ static BOOL NearestBr_FindLeftBracket(INT_X nStartPos, const unsigned int flags,
           wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
       }
       nBrType = getLeftBracketTypeEx(wch, uFlags);
-      if ( nBrType != tbtNone )
+      if ( nBrType != tbtNone && (nBrType != tbtTagInv || OccurrencesData_IsEmpty(&state->occData)) )
       {
         if ( isEscapedPosEx(nBrPos) )
         {
@@ -3380,7 +3380,7 @@ static BOOL NearestBr_FindRightBracket(INT_X nStartPos, const unsigned int flags
           wch = AnyRichEdit_GetCharAtW(hActualEditWnd, nBrPos);
       }
       nBrType = getRightBracketTypeEx(wch, uFlags);
-      if ( nBrType != tbtNone )
+      if ( nBrType != tbtNone && (nBrType != tbtTagInv || OccurrencesData_IsEmpty(&state->occData)) )
       {
         if ( isEscapedPosEx(nBrPos) )
         {
@@ -3533,9 +3533,9 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
     INT_X nRightBrPos;
 
     // OK, pair found
-    NearestBracketsIndexes[0] = state->nLeftBrPos - 1; // position of the left bracket: |(
-    NearestBracketsIndexes[1] = state->nRightBrPos;   // position of the right bracket: |)
-    NearestBracketsIndexes[2] = state->nRightBrType;
+    NearestBracketsIndexesAndType[0] = state->nLeftBrPos - 1; // position of the left bracket: |(
+    NearestBracketsIndexesAndType[1] = state->nRightBrPos;   // position of the right bracket: |)
+    NearestBracketsIndexesAndType[2] = state->nRightBrType;
 
     nLeftBrPos = state->nLeftBrPos;
     nRightBrPos = state->nRightBrPos;
@@ -3572,9 +3572,9 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
             else if (nLeftBrPos != nRightBrPos)
             {
               // incorrect (next) pair found
-              NearestBracketsIndexes[0] = -1;
-              NearestBracketsIndexes[1] = -1;
-              NearestBracketsIndexes[2] = tbtNone;
+              NearestBracketsIndexesAndType[0] = -1;
+              NearestBracketsIndexesAndType[1] = -1;
+              NearestBracketsIndexesAndType[2] = tbtNone;
 
               return FALSE;
             }
@@ -3645,9 +3645,9 @@ static BOOL NearestBr_ApplyStateToRange(const int action, const unsigned int fla
   }
 
   // no pair found
-  NearestBracketsIndexes[0] = -1;
-  NearestBracketsIndexes[1] = -1;
-  NearestBracketsIndexes[2] = tbtNone;
+  NearestBracketsIndexesAndType[0] = -1;
+  NearestBracketsIndexesAndType[1] = -1;
+  NearestBracketsIndexesAndType[2] = tbtNone;
 
   return FALSE;
 }
@@ -3663,20 +3663,26 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
   {
     if ( flags & gnbrfWiden )
     {
-      if ( out_cr->cpMin == NearestBracketsIndexes[0] + 1 && out_cr->cpMax == NearestBracketsIndexes[1] ) // raw indexes
+      if ( NearestBracketsIndexesAndType[2] != tbtTagInv &&
+           out_cr->cpMin == NearestBracketsIndexesAndType[0] + 1 &&
+           out_cr->cpMax == NearestBracketsIndexesAndType[1] ) // raw indexes
       {
         if ( curr_cr->cpMin == out_cr->cpMin && curr_cr->cpMax == out_cr->cpMax )  //  [|...|]
         {
           --out_cr->cpMin;
           ++out_cr->cpMax;
+          return TRUE;
         }
       }
     }
-    return TRUE;
+    else
+    {
+      return TRUE;
+    }
   }
 
   // Note:
-  // Now we can not use the cached values of NearestBracketsIndexes
+  // Now we can not use the cached values of NearestBracketsIndexesAndType
   // because there can be several embedded bracket pairs within the
   // same range, e.g.:
   //   {  (  [  ]  ) | }
@@ -3684,12 +3690,12 @@ static BOOL GetNearestBracketsRange(const int action, const unsigned int flags, 
   // the caret position, e.g.:
   //   {  (  [  ] | )  }
   //   {  (  [ | ]  )  }
-  prevNearestBracketsIndexes[0] = NearestBracketsIndexes[0];
-  prevNearestBracketsIndexes[1] = NearestBracketsIndexes[1];
-  prevNearestBracketsIndexes[2] = NearestBracketsIndexes[2];
-  NearestBracketsIndexes[0] = -1;
-  NearestBracketsIndexes[1] = -1;
-  NearestBracketsIndexes[2] = tbtNone;
+  prevNearestBracketsIndexesAndType[0] = NearestBracketsIndexesAndType[0];
+  prevNearestBracketsIndexesAndType[1] = NearestBracketsIndexesAndType[1];
+  prevNearestBracketsIndexesAndType[2] = NearestBracketsIndexesAndType[2];
+  NearestBracketsIndexesAndType[0] = -1;
+  NearestBracketsIndexesAndType[1] = -1;
+  NearestBracketsIndexesAndType[2] = tbtNone;
 
   state.nCharacterPosition = nCharacterPosition;
   state.nTextLength = (INT_X) SendMessage(g_hMainWnd, AKD_GETTEXTLENGTH, (WPARAM) hActualEditWnd, 0);
@@ -4197,14 +4203,14 @@ void OnEditGetNearestBracketsFunc(int action, HWND hEditWnd, INT_X nCharacterPos
     bFound = FALSE;
     bComment = FALSE;
 
-    if ( (NearestBracketsIndexes[2] != tbtTagInv) &&
-         (nCharacterPosition == NearestBracketsIndexes[0] ||
-          nCharacterPosition == NearestBracketsIndexes[1]) )
+    if ( (NearestBracketsIndexesAndType[2] != tbtTagInv) &&
+         (nCharacterPosition == NearestBracketsIndexesAndType[0] ||
+          nCharacterPosition == NearestBracketsIndexesAndType[1]) )
     {
-      if (nCharacterPosition == NearestBracketsIndexes[0])
-        i = NearestBracketsIndexes[1];
+      if (nCharacterPosition == NearestBracketsIndexesAndType[0])
+        i = NearestBracketsIndexesAndType[1];
       else
-        i = NearestBracketsIndexes[0];
+        i = NearestBracketsIndexesAndType[0];
       if (g_bAkelEdit)
       {
         SendMessage(hActualEditWnd, AEM_RICHOFFSETTOINDEX, (WPARAM) i, (LPARAM) &ci);
@@ -5256,12 +5262,12 @@ void RemoveAllHighlightInfo(const BOOL bRepaint)
   CurrentBracketsIndexes[0] = -1;
   CurrentBracketsIndexes[1] = -1;
 
-  NearestBracketsIndexes[0] = -1;
-  NearestBracketsIndexes[1] = -1;
-  NearestBracketsIndexes[2] = tbtNone;
-  prevNearestBracketsIndexes[0] = -1;
-  prevNearestBracketsIndexes[1] = -1;
-  prevNearestBracketsIndexes[2] = tbtNone;
+  NearestBracketsIndexesAndType[0] = -1;
+  NearestBracketsIndexesAndType[1] = -1;
+  NearestBracketsIndexesAndType[2] = tbtNone;
+  prevNearestBracketsIndexesAndType[0] = -1;
+  prevNearestBracketsIndexesAndType[1] = -1;
+  prevNearestBracketsIndexesAndType[2] = tbtNone;
 
   if (g_bAkelEdit)
   {
@@ -5739,12 +5745,12 @@ void AutoBrackets_Uninitialize(void)
   CurrentBracketsIndexes[0] = -1;
   CurrentBracketsIndexes[1] = -1;
 
-  NearestBracketsIndexes[0] = -1;
-  NearestBracketsIndexes[1] = -1;
-  NearestBracketsIndexes[2] = tbtNone;
-  prevNearestBracketsIndexes[0] = -1;
-  prevNearestBracketsIndexes[1] = -1;
-  prevNearestBracketsIndexes[2] = tbtNone;
+  NearestBracketsIndexesAndType[0] = -1;
+  NearestBracketsIndexesAndType[1] = -1;
+  NearestBracketsIndexesAndType[2] = tbtNone;
+  prevNearestBracketsIndexesAndType[0] = -1;
+  prevNearestBracketsIndexesAndType[1] = -1;
+  prevNearestBracketsIndexesAndType[2] = tbtNone;
 }
 
 static void copyUniqueCharsOkW(tStringWrapperW* pDst, const wchar_t* pSrc)
@@ -5997,19 +6003,19 @@ int JoinNearestBracketsRanges(const CHARRANGE_X* crOldSel, CHARRANGE_X* crJoinSe
   if ((g_dwOptions[OPT_DWORD_NEARESTBR_SELTO_FLAGS] & XBR_NBR_SELTO_OUTERPOS) == 0)
   {
     BOOL bOuterPosAlready = FALSE;
-    if (NearestBracketsIndexes[0] != -1 &&
-        crJoinSel->cpMin == NearestBracketsIndexes[0] &&    //  [0] -> |(
-        crJoinSel->cpMax == NearestBracketsIndexes[1] + 1)  //  [1] -> |)
+    if (NearestBracketsIndexesAndType[0] != -1 &&
+        crJoinSel->cpMin == NearestBracketsIndexesAndType[0] &&    //  [0] -> |(
+        crJoinSel->cpMax == NearestBracketsIndexesAndType[1] + 1)  //  [1] -> |)
     {
       bOuterPosAlready = TRUE;
     }
-    else if (prevNearestBracketsIndexes[0] != -1 &&
-             crJoinSel->cpMin == prevNearestBracketsIndexes[0] &&    //  [0] -> |(
-             crJoinSel->cpMax == prevNearestBracketsIndexes[1] + 1)  //  [1] -> |)
+    else if (prevNearestBracketsIndexesAndType[0] != -1 &&
+             crJoinSel->cpMin == prevNearestBracketsIndexesAndType[0] &&    //  [0] -> |(
+             crJoinSel->cpMax == prevNearestBracketsIndexesAndType[1] + 1)  //  [1] -> |)
     {
       bOuterPosAlready = TRUE;
     }
-    if (!bOuterPosAlready)
+    if (/*NearestBracketsIndexesAndType[2] != tbtTagInv &&*/ !bOuterPosAlready)
     {
       //  {|...|}  ->  |{...}|
       --crJoinSel->cpMin;
@@ -6100,7 +6106,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     left_ch = (crOldSel.cpMin != 0) ? getCharAt(hWndEdit, crOldSel.cpMin - 1) : 0;
     if (left_ch != 0)
     {
-      nOuterLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT);
+      nOuterLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT/* | BTF_CHECK_TAGINV*/);
       if (nOuterLeftBrType == tbtNone)
         nOuterLeftBrTypeInversed = getRightBracketType(left_ch, BTF_HIGHLIGHT);  //  ]|...
     }
@@ -6108,7 +6114,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
     right_ch = getCharAt(hWndEdit, crOldSel.cpMax);
     if (right_ch != 0)
     {
-      nOuterRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT);
+      nOuterRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT/* | BTF_CHECK_TAGINV*/);
       if (nOuterRightBrType == tbtNone)
         nOuterRightBrTypeInversed = getLeftBracketType(right_ch, BTF_HIGHLIGHT);  //  ...|[
     }
@@ -6126,7 +6132,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
       left_ch = getCharAt(hWndEdit, crOldSel.cpMin);
       if (left_ch != 0)
       {
-        nInnerLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT);
+        nInnerLeftBrType = getLeftBracketType(left_ch, BTF_HIGHLIGHT/* | BTF_CHECK_TAGINV*/);
         if (nInnerLeftBrType == tbtNone)
           nInnerLeftBrTypeInversed = getRightBracketType(left_ch, BTF_HIGHLIGHT);  //  |]...
       }
@@ -6137,7 +6143,7 @@ BOOL WidenNearestBracketsSelection(HWND hWndEdit, const void* crSel)
         right_ch = getCharAt(hWndEdit, crOldSel.cpMax - 1);
         if (right_ch != 0)
         {
-          nInnerRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT);
+          nInnerRightBrType = getRightBracketType(right_ch, BTF_HIGHLIGHT/* | BTF_CHECK_TAGINV*/);
           if (nInnerRightBrType == tbtNone)
             nInnerRightBrTypeInversed = getLeftBracketType(right_ch, BTF_HIGHLIGHT);  //  ...[|
 

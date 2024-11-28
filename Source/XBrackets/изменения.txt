@@ -6,6 +6,24 @@
   Як наслідок, 64-бітна XBrackets.dll має менший розмір і працює швидше,
   оскільки їй не треба перевіряти умови `if (g_bOldWindows)`.
 
++ виправлено: функція GetNearestBracketsRange могла відпрацювати некоректно
+  у специфічних випадках з HTML/XML тегами на зразок
+    <p>text ( <code>url</code> )| </p>
+  У такій ситуації права дужка ідентифікувалася як ')' (tbtBracket), а ліва
+  ідентифікувалася як '>' (tbtTagInv).
+  Щоби запобігти цьому, був доданий флаг gnbrfNoTagInv, при якому тип дужки
+  tbtTagInv не повертається. Також функція GetNearestBracketsRange розширена
+  додатковим пошуком парних дужок, коли для tbtTagInv не було знайдено пари.
+  Нагадую, що ідея tbtTagInv полягає у виділенні текста всередині тегу, як-от:
+    <tag>text to be selected</tag>
+
++ виправлено: функція GetNearestBracketsRange могла відпрацювати некоректно
+  для WidenNearestBracketsSelection у специфічних випадках з tbtTagInv.
+  Наприклад, коли WidenNearestBracketsSelection викликався кілька разів у таких
+  умовах:
+    <p>text ( <code>url</code> )| </p>
+    <p|>text ( <code>url</code> ) </p>
+
 
 May 2022
 --------
