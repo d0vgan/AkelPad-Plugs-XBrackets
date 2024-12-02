@@ -261,7 +261,7 @@ When you activate the plugin it automatically re-reads its settings.
 --------
 History:
 --------
-v.8.2 (2024)
+v.8.2 (December 2024)
  * Glory to Ukraine! Glory to the heroes!
  - fixed: brackets were not highlighted in a newly created tab in PMDI mode
  - fixed: GoToNearestBracket might fail within HTML tags
@@ -561,7 +561,7 @@ of this plugin.
 -----------------------------------------------------------
 The icon by se7h.
 -----------------------------------------------------------
-(C) Oct 2006 - Mar 2024, Vitaliy Dovgan aka DV
+(C) Oct 2006 - Dec 2024, Vitaliy Dovgan aka DV
           dvv81 <at> ukr <dot> net
 
 This plugin is freeware (free for both personal and commercial usage);
