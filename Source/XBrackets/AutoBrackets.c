@@ -1066,6 +1066,10 @@ static BOOL IsEnclosedInBracketsW(const wchar_t* pszTextLeftW, const wchar_t* ps
   BOOL bRet;
 
   bRet = FALSE;
+
+  if (pszTextLeftW == pszTextRightW)
+    return bRet;
+
   nBrType = *pnBracketType;
   pszBrPairW = getBracketsPairW(nBrType);
 
@@ -1115,6 +1119,10 @@ static BOOL IsEnclosedInBracketsA(const char* pszTextLeftA, const char* pszTextR
   BOOL bRet;
 
   bRet = FALSE;
+
+  if (pszTextLeftA == pszTextRightA)
+    return bRet;
+
   nBrType = *pnBracketType;
   pszBrPairA = getBracketsPairA(nBrType);
 
